@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Avelon",
+    "slug": "Avelon",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/avelon_nobg.png",
+    "scheme": "Avelon",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/digitalwallet.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF7A00"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/digitalwallet.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/avelon_nobg.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
