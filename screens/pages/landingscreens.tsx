@@ -60,7 +60,7 @@ export default function Page() {
     <View style={{ width }} className="flex-1 items-center bg-white px-4">
       <Image
         source={item.logo}
-        className="w-[40%] h-[20%]"
+        className="w-[50%] h-[25%]"
         resizeMode="contain"
       />
       <Image
@@ -69,7 +69,7 @@ export default function Page() {
         resizeMode="contain"
       />
 
-      <View className="mt-10">
+      <View className="mt-10 ">
         <Text className="text-black text-center font-bold text-2xl">{item.title}</Text>
         <Text className="text-black text-center font-bold text-2xl">{item.subtitle}</Text>
         <Text className="text-gray-600 text-lg text-center mt-4 px-2">
@@ -94,7 +94,7 @@ export default function Page() {
       />
 
       {/* Dot Indicators */}
-      <View className="flex-row justify-center items-center mb-8">
+      <View className="flex-row justify-center items-center mb-10">
         {slides.map((_, index) => (
           <TouchableOpacity
             key={index}
@@ -107,29 +107,19 @@ export default function Page() {
           />
         ))}
       </View>
+      <View className="items-center mb-10 space-y-4">
 
-      {/* Next/Skip Buttons */}
-      <View className="flex-row justify-between px-8 mb-4">
-        {currentIndex < slides.length - 1 ? (
-          <>
-            <TouchableOpacity onPress={() => scrollTo(slides.length - 1)}>
-              <Text className="text-gray-500 text-base">Skip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => scrollTo(currentIndex + 1)}
-              className="bg-black px-6 py-2 rounded-full"
-            >
-              <Text className="text-white font-semibold">Next</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity 
-            className="bg-black px-8 py-3 rounded-full w-full"
-            onPress={() => {/* Navigate to login/signup */}}
-          >
-            <Text className="text-white font-semibold text-center">Get Started</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+        className="bg-black w-[90%] justify-center items-center py-4 rounded-full"
+          onPress={() => console.log('Login pressed')}
+        >
+          <Text className="text-white text-lg font-bold">Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity>
+          <Text className="text-gray-600 text-lg mt-2">Create Account</Text>
+        </TouchableOpacity>
+       
       </View>
     </SafeAreaView>
   );
