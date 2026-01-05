@@ -2,6 +2,9 @@ import { View, Text, Image, Dimensions, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRef, useState } from "react";
 import { FlatList } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../app/_layout";
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +42,7 @@ const slides = [
 ];
 
 export default function Page() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -107,19 +111,20 @@ export default function Page() {
           />
         ))}
       </View>
-      <View className="items-center mb-10 space-y-4">
+      <View className="items-center mb-10">
 
         <TouchableOpacity
         className="bg-black w-[90%] justify-center items-center py-4 rounded-full"
-          onPress={() => console.log('Login pressed')}
+          onPress={() => navigation.navigate('SignIn')}
         >
           <Text className="text-white text-lg font-bold">Login</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Signup')}
+        >
           <Text className="text-gray-600 text-lg mt-2">Create Account</Text>
         </TouchableOpacity>
-       
       </View>
     </SafeAreaView>
   );
