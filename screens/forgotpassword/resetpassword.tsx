@@ -15,9 +15,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../app/_layout";
 import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 
 export default function ResetPassword() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
       <View style={{ flex: 1 }}>
@@ -66,13 +70,15 @@ export default function ResetPassword() {
                       <TextInput
                         className="ml-2 flex-1 py-3"
                         placeholder="Create a Password"
-                        secureTextEntry
+                        secureTextEntry={!showPassword}
                       />
-                      <Ionicons
-                        name="eye-off-outline"
-                        size={20}
-                        color="gray"
-                      />
+                      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                        <Ionicons
+                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          size={20}
+                          color="gray"
+                        />
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -90,13 +96,15 @@ export default function ResetPassword() {
                       <TextInput
                         className="ml-2 flex-1 py-3"
                         placeholder="Re-enter your Password"
-                        secureTextEntry
+                        secureTextEntry={!showConfirmPassword}
                       />
-                      <Ionicons
-                        name="eye-off-outline"
-                        size={20}
-                        color="gray"
-                      />
+                      <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        <Ionicons
+                          name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
+                          size={20}
+                          color="gray"
+                        />
+                      </TouchableOpacity>
                     </View>
                     </View>
                   </View>
