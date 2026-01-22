@@ -1,0 +1,39 @@
+/**
+ * Application Configuration
+ * 
+ * NOTE: For physical device testing, use your machine's local IP instead of localhost
+ * Find your IP by running: ipconfig (Windows) or ifconfig (Mac/Linux)
+ */
+
+// API Configuration
+// Use your machine's local IP for physical device testing
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.48:3001/api/v1";
+
+// App Information
+export const APP_NAME = "Avelon";
+export const APP_VERSION = "1.0.0";
+
+// Environment
+export const IS_DEV = __DEV__;
+export const IS_PROD = !__DEV__;
+
+// Firebase Configuration (for FCM push notifications)
+export const FIREBASE_CONFIG = {
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+};
+
+// WalletConnect Configuration
+export const WALLETCONNECT_CONFIG = {
+    projectId: process.env.EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+    metadata: {
+        name: "Avelon",
+        description: "Decentralized Crypto Lending Platform",
+        url: "https://avelon.io",
+        icons: ["https://avelon.io/icon.png"],
+    },
+};
