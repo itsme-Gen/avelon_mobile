@@ -29,26 +29,28 @@ export default function SignInScreen() {
         // Clear previous errors
         clearError();
 
-        // Basic validation
-        if (!email.trim()) {
-            Alert.alert("Validation Error", "Please enter your email");
-            return;
-        }
-        if (!password) {
-            Alert.alert("Validation Error", "Please enter your password");
-            return;
-        }
+        router.replace("/(tabs)/Home")
 
-        const success = await login(email.trim(), password);
+        // // Basic validation
+        // if (!email.trim()) {
+        //     Alert.alert("Validation Error", "Please enter your email");
+        //     return;
+        // }
+        // if (!password) {
+        //     Alert.alert("Validation Error", "Please enter your password");
+        //     return;
+        // }
 
-        if (success) {
-            // TODO: Navigate to main dashboard when implemented
-            Alert.alert("Success", "You are now logged in!", [
-                { text: "OK", onPress: () => router.replace("/") }
-            ]);
-        } else if (error) {
-            Alert.alert("Login Failed", error);
-        }
+        // const success = await login(email.trim(), password);
+
+        // if (success) {
+        //     // TODO: Navigate to main dashboard when implemented
+        //     Alert.alert("Success", "You are now logged in!", [
+        //         { text: "OK", onPress: () => router.replace("/") }
+        //     ]);
+        // } else if (error) {
+        //     Alert.alert("Login Failed", error);
+        // }
     };
 
     return (

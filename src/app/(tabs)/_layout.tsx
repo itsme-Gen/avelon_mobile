@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -58,6 +58,8 @@ export default function TabsLayout() {
           },
           headerStyle: {
             backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
           },
           headerTintColor: '#000',
           headerTitleStyle: {
@@ -122,6 +124,17 @@ export default function TabsLayout() {
           name="Profile"
           options={{
             title: 'Profile',
+            headerRight: () => (
+              <TouchableOpacity 
+                className="mr-4"
+                onPress={() => {
+                  // Handle notification press
+                  console.log('Notification pressed');
+                }}
+              >
+                <Ionicons name="notifications-outline" size={24} color="#000" />
+              </TouchableOpacity>
+            ),
             tabBarIcon: ({ focused }) => (
               <TabIcon 
                 focused={focused} 
