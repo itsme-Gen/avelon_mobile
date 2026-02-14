@@ -9,7 +9,10 @@ export default function Profile() {
   const router = useRouter();
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView
+      className="flex-1 mt-5 bg-gray-50"
+      edges={["right", "bottom", "left"]}
+    >
       {!showVerification ? (
         // Profile Screen
         <View className="flex-1">

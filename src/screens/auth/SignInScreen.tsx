@@ -28,7 +28,6 @@ export default function SignInScreen() {
     const handleLogin = async () => {
         // Clear previous errors
         clearError();
-
         router.replace("/(tabs)/Home")
 
         // // Basic validation

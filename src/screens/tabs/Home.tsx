@@ -1,13 +1,19 @@
-import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { LineChart } from 'react-native-chart-kit';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import {
+  Dimensions,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { LineChart } from "react-native-chart-kit";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const screenWidth = Dimensions.get('window').width;
+  const screenWidth = Dimensions.get("window").width;
 
   const chartData = {
-    labels: ['1h', '6h', '12h', '1D', '1W', '1M', '3M', '1Y', '5Y', 'ALL'],
+    labels: ["1h", "6h", "12h", "1D", "1W", "1M", "3M", "1Y", "5Y", "ALL"],
     datasets: [
       {
         data: [2800, 3200, 2900, 3500, 3100, 3800, 3400, 3000, 2700, 3200],
@@ -18,9 +24,9 @@ export default function HomeScreen() {
   };
 
   const chartConfig = {
-    backgroundColor: '#fff',
-    backgroundGradientFrom: '#fff',
-    backgroundGradientTo: '#fff',
+    backgroundColor: "#fff",
+    backgroundGradientFrom: "#fff",
+    backgroundGradientTo: "#fff",
     decimalPlaces: 0,
     color: (opacity = 1) => `rgba(255, 140, 66, 0.95)`,
     labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
@@ -28,21 +34,24 @@ export default function HomeScreen() {
       borderRadius: 16,
     },
     propsForDots: {
-      r: '0',
+      r: "0",
     },
     propsForBackgroundLines: {
-      strokeDasharray: '',
-      stroke: '#E5E7EB',
+      strokeDasharray: "",
+      stroke: "#E5E7EB",
       strokeWidth: 1,
     },
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <ScrollView 
-        className="flex-1"
+    <SafeAreaView
+      className="flex-1 bg-white"
+      edges={["right", "bottom", "left"]}
+    >
+      <ScrollView
+        className="flex-1 mt-5"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ flexGrow: 1 }}
       >
         {/* Hero Section */}
         <View className="px-5">
@@ -82,24 +91,24 @@ export default function HomeScreen() {
             <Text className="text-base font-semibold text-gray-900 mb-3">
               ETH Price Volatility Prediction
             </Text>
-            
+
             <LineChart
-                data={chartData}
-                    width={screenWidth - 72}
-                    height={180}
-                    chartConfig={chartConfig}
-                    bezier
-                    style={{
-                        marginVertical: 4,
-                        borderRadius: 12
-                    }}
-                    withInnerLines={true}
-                    withOuterLines={false}
-                    withVerticalLines={false}
-                    withHorizontalLines={true}
-                    withDots={true}
-                    withShadow={true}
-                    segments={4}
+              data={chartData}
+              width={screenWidth - 72}
+              height={180}
+              chartConfig={chartConfig}
+              bezier
+              style={{
+                marginVertical: 4,
+                borderRadius: 12,
+              }}
+              withInnerLines={true}
+              withOuterLines={false}
+              withVerticalLines={false}
+              withHorizontalLines={true}
+              withDots={true}
+              withShadow={true}
+              segments={4}
             />
 
             {/* Current Value Indicator */}

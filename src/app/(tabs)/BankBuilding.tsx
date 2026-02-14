@@ -1,1 +1,1 @@
-export {default} from "../../screens/tabs/BankBuilding"
+export {default} from "../../screens/tabs/LoanPlans"

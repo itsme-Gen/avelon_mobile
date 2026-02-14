@@ -1,9 +1,9 @@
-import { Tabs } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { View, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Tabs } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { Dimensions, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TabIconProps {
   focused: boolean;
@@ -12,13 +12,20 @@ interface TabIconProps {
   size?: number;
 }
 
-const TabIcon = ({ focused, IconComponent, iconName, size = 28 }: TabIconProps) => {
+const TabIcon = ({
+  focused,
+  IconComponent,
+  iconName,
+  size = 28,
+}: TabIconProps) => {
   return (
-    <View className={`w-[50px] h-[50px] rounded-full justify-center items-center self-center  ${focused ? 'bg-[#FFE7D2]' : ''}`}>
+    <View
+      className={`w-[50px] h-[50px] rounded-full justify-center items-center self-center  ${focused ? "bg-[#FFE7D2]" : ""}`}
+    >
       <IconComponent
         name={iconName}
         size={size}
-        color={focused ? '#FF8C42' : '#6B7280'}
+        color={focused ? "#FF8C42" : "#6B7280"}
       />
     </View>
   );
@@ -26,6 +33,8 @@ const TabIcon = ({ focused, IconComponent, iconName, size = 28 }: TabIconProps) 
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const screenWidth = Dimensions.get("window").width;
+  const margin = screenWidth * 0.05;
 
   return (
     <>
@@ -34,14 +43,14 @@ export default function TabsLayout() {
         screenOptions={{
           tabBarShowLabel: false,
           tabBarStyle: {
-            position: 'absolute',
+            position: "absolute",
             bottom: insets.bottom + 10,
-            left: 30,
-            right: 30,
+            width: screenWidth * 0.9,
+            marginHorizontal: screenWidth * 0.05,
             height: 70,
-            backgroundColor: '#fff',
+            backgroundColor: "#fff",
             borderRadius: 50,
-            shadowColor: '#000000',
+            shadowColor: "#000000",
             shadowOffset: {
               width: 1,
               height: 1,
@@ -52,18 +61,18 @@ export default function TabsLayout() {
             borderTopWidth: 0,
           },
           tabBarItemStyle: {
-            justifyContent: 'center',
-            alignItems: 'center',
+            justifyContent: "center",
+            alignItems: "center",
             paddingVertical: 20,
           },
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: "#fff",
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: "#E5E7EB",
           },
-          headerTintColor: '#000',
+          headerTintColor: "#000",
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontWeight: "bold",
           },
           headerShadowVisible: false,
         }}
@@ -71,12 +80,12 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="Home"
           options={{
-            title: 'Home',
+            title: "Home",
             tabBarIcon: ({ focused }) => (
-              <TabIcon 
-                focused={focused} 
+              <TabIcon
+                focused={focused}
                 IconComponent={Ionicons}
-                iconName={focused ? 'home' : 'home-outline'}
+                iconName={focused ? "home" : "home-outline"}
               />
             ),
           }}
@@ -84,12 +93,12 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="BankBuilding"
           options={{
-            title: 'Loan Plans',
+            title: "Loan Plans",
             tabBarIcon: ({ focused }) => (
-              <TabIcon 
-                focused={focused} 
+              <TabIcon
+                focused={focused}
                 IconComponent={MaterialCommunityIcons}
-                iconName={focused ? 'bank' : 'bank-outline'}
+                iconName={focused ? "bank" : "bank-outline"}
               />
             ),
           }}
@@ -97,25 +106,25 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="Wallet"
           options={{
-            title: 'My Wallet',
+            title: "My Wallet",
             tabBarIcon: ({ focused }) => (
-              <TabIcon 
-                focused={focused} 
+              <TabIcon
+                focused={focused}
                 IconComponent={Ionicons}
-                iconName={focused ? 'wallet' : 'wallet-outline'}
+                iconName={focused ? "wallet" : "wallet-outline"}
               />
             ),
           }}
         />
         <Tabs.Screen
-          name="Documents"
+          name="Records"
           options={{
-            title: 'Documents',
+            title: "Records",
             tabBarIcon: ({ focused }) => (
-              <TabIcon 
-                focused={focused} 
+              <TabIcon
+                focused={focused}
                 IconComponent={Ionicons}
-                iconName={focused ? 'document-text' : 'document-text-outline'}
+                iconName={focused ? "document-text" : "document-text-outline"}
               />
             ),
           }}
@@ -123,23 +132,23 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="Profile"
           options={{
-            title: 'Profile',
+            title: "Profile",
             headerRight: () => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 className="mr-4"
                 onPress={() => {
                   // Handle notification press
-                  console.log('Notification pressed');
+                  console.log("Notification pressed");
                 }}
               >
                 <Ionicons name="notifications-outline" size={24} color="#000" />
               </TouchableOpacity>
             ),
             tabBarIcon: ({ focused }) => (
-              <TabIcon 
-                focused={focused} 
+              <TabIcon
+                focused={focused}
                 IconComponent={Ionicons}
-                iconName={focused ? 'person' : 'person-outline'}
+                iconName={focused ? "person" : "person-outline"}
               />
             ),
           }}

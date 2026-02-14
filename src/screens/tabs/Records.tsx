@@ -1,11 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRef, useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import type { PagerViewOnPageSelectedEvent } from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -106,7 +106,10 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView
+      className="flex-1 bg-white mt-5"
+      edges={["right", "bottom", "left"]}
+    >
       {/* Tab Navigation */}
       <View className="px-5 mb-4">
         <View className="flex-row bg-gray-100 rounded-xl p-1">
@@ -152,7 +155,7 @@ export default function DocumentsScreen() {
         <View key="1" style={styles.page}>
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
           >
             <View className="px-5">
               {loanHistory.map((loan) => (
@@ -183,7 +186,7 @@ export default function DocumentsScreen() {
         <View key="2" style={styles.page}>
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
           >
             <View className="px-5">
               {paymentHistory.map((payment) => (
@@ -213,20 +216,6 @@ export default function DocumentsScreen() {
           </ScrollView>
         </View>
       </PagerView>
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        className="absolute bottom-24 right-5 w-14 h-14 rounded-full bg-[#FF8C42] justify-center items-center shadow-lg"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-          elevation: 8,
-        }}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
