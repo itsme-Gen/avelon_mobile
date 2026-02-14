@@ -10,7 +10,7 @@ export default function Profile() {
 
   return (
     <SafeAreaView
-      className="flex-1 mt-5 bg-gray-50"
+      className="flex-1 bg-gray-50"
       edges={["right", "bottom", "left"]}
     >
       {!showVerification ? (

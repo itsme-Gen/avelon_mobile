@@ -1,11 +1,18 @@
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { router } from "expo-router";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ContactInformation() {
     const [contactNumber, setContactNumber] = useState("");
     const [email, setEmail] = useState("");
+    const insets = useSafeAreaInsets();
+
+    // Check if all required fields are filled
+    const isFormValid = useMemo(() => {
+        return contactNumber.trim() !== "" && email.trim() !== "";
+    }, [contactNumber, email]);
 
     return (
         <View className="flex-1 bg-gray-50 px-6 pt-12">
@@ -51,7 +58,10 @@ export default function ContactInformation() {
             <ProgressDots currentStep={1} totalSteps={3} />
 
             {/* Action Buttons */}
-            <View className="flex-row gap-3 mb-8">
+            <View 
+                className="flex-row gap-3 mb-8"
+                style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+            >
                 <TouchableOpacity 
                     className="flex-1 bg-gray-200 rounded-full py-4 items-center"
                     activeOpacity={0.7}
@@ -63,13 +73,20 @@ export default function ContactInformation() {
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                    className="flex-1 bg-black rounded-full py-4 items-center"
+                    className={`flex-1 rounded-full py-4 items-center ${
+                        isFormValid ? "bg-black" : "bg-gray-300"
+                    }`}
                     activeOpacity={0.8}
                     onPress={() => {
-                        router.push("/(verification)/IDVerification");
+                        if (isFormValid) {
+                            router.push("/(verification)/IDVerification");
+                        }
                     }}
+                    disabled={!isFormValid}
                 >
-                    <Text className="text-base font-semibold text-white">
+                    <Text className={`text-base font-semibold ${
+                        isFormValid ? "text-white" : "text-gray-500"
+                    }`}>
                         Next
                     </Text>
                 </TouchableOpacity>

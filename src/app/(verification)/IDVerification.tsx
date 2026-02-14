@@ -5,6 +5,7 @@ import { ProgressDots } from '../../components/progressdot/ProgressDot';
 import { CustomAlert } from '../../components/alertbutton/CustomAlert';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AlertConfig {
   visible: boolean;
@@ -20,6 +21,7 @@ interface AlertConfig {
 }
 
 export default function IDVerification() {
+  const insets = useSafeAreaInsets();
   const [selectedIdFront, setSelectedIdFront] = useState<string | null>(null);
   const [selectedIdBack, setSelectedIdBack] = useState<string | null>(null);
   const [selectedSignature, setSelectedSignature] = useState<string | null>(null);
@@ -248,8 +250,11 @@ export default function IDVerification() {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-white">
-        <View className="px-6 pt-8 pb-24">
+      <ScrollView 
+        className="flex-1 bg-white"
+        contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
+      >
+        <View className="px-6 pt-8">
           {/* Header Section */}
           <View className="mb-8 mt-12">
             <Text className="text-2xl font-bold text-gray-900 mb-3">
@@ -266,45 +271,53 @@ export default function IDVerification() {
           </View>
 
           {/* Upload Buttons */}
-          <View className="gap-4 mb-8">
+          <View className="gap-4 mb-6">
             {renderUploadButton('front', 'Submit a photo of your ID (Front)', selectedIdFront)}
             {renderUploadButton('back', 'Submit a photo of your ID (Back)', selectedIdBack)}
             {renderUploadButton('signature', 'Submit a photo of your E-Signature', selectedSignature)}
           </View>
-
-          {/* Progress Dots - Step 3 of 3 */}
-          <ProgressDots currentStep={2} totalSteps={3} />
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex-row gap-3">
-        <TouchableOpacity 
-          className="flex-1 bg-gray-100 rounded-full py-4 items-center justify-center"
-          onPress={() => router.back()}
-        >
-          <Text className="text-gray-900 font-semibold text-base">
-            Back
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          className={`flex-1 rounded-full py-4 items-center justify-center ${
-            selectedIdFront && selectedIdBack && selectedSignature 
-              ? 'bg-gray-900' 
-              : 'bg-gray-300'
-          }`}
-          onPress={handleNext}
-          disabled={!selectedIdFront || !selectedIdBack || !selectedSignature}
-        >
-          <Text className={`font-semibold text-base ${
-            selectedIdFront && selectedIdBack && selectedSignature 
-              ? 'text-white' 
-              : 'text-gray-500'
-          }`}>
-            Next
-          </Text>
-        </TouchableOpacity>
+      {/* Bottom Navigation with Progress Dots */}
+      <View 
+        className="absolute bottom-0 left-0 right-0"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
+        {/* Progress Dots */}
+        <View className="px-6 pt-4 pb-3">
+          <ProgressDots currentStep={2} totalSteps={3} />
+        </View>
+
+        {/* Buttons */}
+        <View className="px-6 pb-4 flex-row gap-3">
+          <TouchableOpacity 
+            className="flex-1 bg-gray-100 rounded-full py-4 items-center justify-center"
+            onPress={() => router.back()}
+          >
+            <Text className="text-gray-900 font-semibold text-base">
+              Back
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            className={`flex-1 rounded-full py-4 items-center justify-center ${
+              selectedIdFront && selectedIdBack && selectedSignature 
+                ? 'bg-gray-900' 
+                : 'bg-gray-300'
+            }`}
+            onPress={handleNext}
+            disabled={!selectedIdFront || !selectedIdBack || !selectedSignature}
+          >
+            <Text className={`font-semibold text-base ${
+              selectedIdFront && selectedIdBack && selectedSignature 
+                ? 'text-white' 
+                : 'text-gray-500'
+            }`}>
+              Next
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Custom Alert */}
