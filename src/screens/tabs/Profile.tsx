@@ -1,12 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useState, useEffect } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ProfileSettings from "../../screens/settings/ProfileSettings" // Adjust path as needed
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
+  const [isVerified, setIsVerified] = useState(false); // TODO: Replace with actual backend state
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // Check if user just completed verification
+  useEffect(() => {
+    if (params.verified === 'true') {
+      setIsVerified(true);
+    }
+  }, [params.verified]);
 
   return (
     <SafeAreaView
@@ -31,27 +41,32 @@ export default function Profile() {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {/* Verification Card */}
-          <View className="items-center px-6 py-8">
-            <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
-              <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
-                <Ionicons name="shield-checkmark" size={32} color="#fff" />
+          {!isVerified ? (
+            // Verification Card (Before Verification)
+            <View className="items-center px-6 py-8">
+              <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
+                <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
+                  <Ionicons name="shield-checkmark" size={32} color="#fff" />
+                </View>
               </View>
-            </View>
 
-            <Text className="text-base text-gray-700 mb-6 text-center">
-              verify your account now to see details!
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => setShowVerification(true)}
-              className="bg-black px-12 py-4 rounded-full"
-            >
-              <Text className="text-white font-semibold text-base">
-                Verify Account
+              <Text className="text-base text-gray-700 mb-6 text-center">
+                verify your account now to see details!
               </Text>
-            </TouchableOpacity>
-          </View>
+
+              <TouchableOpacity
+                onPress={() => setShowVerification(true)}
+                className="bg-black px-12 py-4 rounded-full"
+              >
+                <Text className="text-white font-semibold text-base">
+                  Verify Account
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Profile Settings (After Verification)
+            <ProfileSettings onResetVerification={() => setIsVerified(false)} />
+          )}
 
           {/* Bottom Navigation */}
           <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6 border-t border-gray-200">

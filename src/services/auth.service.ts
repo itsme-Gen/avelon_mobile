@@ -6,6 +6,7 @@
  */
 import { API_BASE_URL } from '@/config';
 import { getAccessToken, getRefreshToken, saveTokens, clearAuthData } from '@/utils/storage';
+import { router } from 'expo-router';
 
 // Types matching backend responses
 export interface User {
@@ -118,12 +119,18 @@ export async function login(
  * Calls: POST /api/v1/auth/logout
  */
 export async function logout(): Promise<void> {
-    try {
-        await apiRequest('/auth/logout', { method: 'POST' });
-    } finally {
-        // Always clear local auth data
-        await clearAuthData();
-    }
+    // try {
+    //     await apiRequest('/auth/logout', { method: 'POST' });
+    // } finally {
+    //     // Always clear local auth data
+    //     await clearAuthData();
+
+    //Uncomment above if you have a logout endpoint, otherwise just clear local data and navigate
+        
+    // Navigate to login screen (temporary - adjust path as needed)
+    router.replace('/(auth)/signin');
+    
+    //}
 }
 
 /**
