@@ -1,8 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoanPlans() {
+  const router = useRouter();
+
   const loans = [
     {
       id: 1,
@@ -70,6 +73,15 @@ export default function LoanPlans() {
               <TouchableOpacity
                 key={loan.id}
                 className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
+                onPress={() =>
+                  router.push({
+                    pathname: "/loan-application",
+                    params: {
+                      title: loan.title,
+                      amount: loan.amount,
+                    },
+                  })
+                }
               >
                 <View className={`w-1 h-16 ${loan.color} rounded-full mr-4`} />
                 <View className="flex-1">

@@ -107,11 +107,11 @@ export default function DocumentsScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white mt-5"
+      className="flex-1 bg-white"
       edges={["right", "bottom", "left"]}
     >
       {/* Tab Navigation */}
-      <View className="px-5 mb-4">
+      <View className="px-5 pt-3 mb-4">
         <View className="flex-row bg-gray-100 rounded-xl p-1">
           <TouchableOpacity
             onPress={() => handleTabPress(0)}

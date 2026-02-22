@@ -91,7 +91,7 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="BankBuilding"
+          name="LoanPlans"
           options={{
             title: "Loan Plans",
             tabBarIcon: ({ focused }) => (

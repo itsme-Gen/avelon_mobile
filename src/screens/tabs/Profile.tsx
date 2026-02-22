@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ProfileSettings from "../../screens/settings/ProfileSettings" // Adjust path as needed
+import ProfileSettings from "../../screens/settings/ProfileSettings"; // Adjust path as needed
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
@@ -13,7 +13,7 @@ export default function Profile() {
 
   // Check if user just completed verification
   useEffect(() => {
-    if (params.verified === 'true') {
+    if (params.verified === "true") {
       setIsVerified(true);
     }
   }, [params.verified]);
@@ -69,7 +69,7 @@ export default function Profile() {
           )}
 
           {/* Bottom Navigation */}
-          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6 border-t border-gray-200">
+          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">
             <TouchableOpacity className="items-center">
               <Ionicons name="home-outline" size={24} color="#9CA3AF" />
             </TouchableOpacity>
