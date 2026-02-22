@@ -55,17 +55,36 @@ export function getPasswordStrength(password: string): number {
 }
 
 /**
+ * Sanitizes name input in real-time by stripping disallowed characters.
+ * Only allows letters, spaces, hyphens, and apostrophes.
+ * @param value - The raw input value
+ * @returns Sanitized string with invalid characters removed
+ */
+export function sanitizeNameInput(value: string): string {
+  return value.replace(/[^a-zA-Z\s'-]/g, '');
+}
+
+/**
  * Validates name fields (first name, last name, middle name)
  * @param name - The name to validate
  * @param field - Field name for error messages (e.g., "First name")
+ * @param isOptional - Whether the field is optional (e.g., middle name)
  * @returns Error message if invalid, empty string if valid
  */
-export function validateName(name: string, field: string): string {
+export function validateName(name: string, field: string, isOptional: boolean = false): string {
   const trimmedName = name.trim();
+
+  // If optional and empty, it's valid
+  if (isOptional && !trimmedName) return "";
+
   if (!trimmedName) return `${field} is required`;
   if (trimmedName.length < 2) return `${field} must be at least 2 characters`;
   if (!/^[a-zA-Z\s'-]+$/.test(trimmedName))
-    return `${field} contains invalid characters`;
+    return `${field} can only contain letters, spaces, hyphens, and apostrophes`;
+  if (/^['-]/.test(trimmedName) || /['-]$/.test(trimmedName))
+    return `${field} cannot start or end with a hyphen or apostrophe`;
+  if (/\s{2,}/.test(trimmedName))
+    return `${field} cannot contain consecutive spaces`;
   if (trimmedName.length > 30)
     return `${field} is too long (max 30 characters)`;
 
