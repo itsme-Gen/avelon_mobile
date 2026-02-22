@@ -10,47 +10,39 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    ActivityIndicator,
     Alert,
+    ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import * as authService from "@/services/auth.service";
-import { validateEmail } from "@/utils/validation.util";
+import { verifyEmail } from "@/services/auth.service";
 
-export default function ForgotPasswordScreen() {
-    const [email, setEmail] = useState("");
+export default function VerifyEmailScreen() {
+    const { email } = useLocalSearchParams<{ email: string }>();
+    const [otp, setOtp] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSendOTP = async () => {
-        // Validate email using shared validator
-        const emailError = validateEmail(email);
-        if (emailError) {
-            Alert.alert("Validation Error", emailError);
+    const handleVerifyOTP = async () => {
+        if (!otp || otp.length < 6) {
+            Alert.alert("Error", "Please enter the 6-digit OTP");
             return;
         }
 
         setIsLoading(true);
-
         try {
-            const response = await authService.forgotPassword(email.trim());
-
-            if (response.success) {
+            const result = await verifyEmail(otp);
+            if (result.success) {
                 Alert.alert(
-                    "Email Sent",
-                    "If an account exists with this email, you will receive a password reset link.",
-                    [
-                        {
-                            text: "OK",
-                            onPress: () => router.push("/(auth)/forgot-password/otp"),
-                        },
-                    ]
+                    "Success",
+                    "Email verified successfully! You can now log in.",
+                    [{ text: "OK", onPress: () => router.push("/(auth)/signin") }]
                 );
+            } else {
+                Alert.alert("Verification Failed", result.message || "Invalid OTP");
             }
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to send reset email";
-            Alert.alert("Error", message);
+        } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to verify email");
         } finally {
             setIsLoading(false);
         }
@@ -59,15 +51,6 @@ export default function ForgotPasswordScreen() {
     return (
         <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             <View style={{ flex: 1 }}>
-                {/* Back Button */}
-                <TouchableOpacity
-                    className="absolute top-4 left-4 z-10 p-2"
-                    onPress={() => router.back()}
-                >
-                    <Ionicons name="arrow-back" size={24} color="black" />
-                </TouchableOpacity>
-
-                {/* Scrollable Content */}
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={{ flex: 1 }}
@@ -92,28 +75,28 @@ export default function ForgotPasswordScreen() {
                                     />
 
                                     {/* TITLE */}
-                                    <Text className="text-black text-3xl font-semibold mb-4">
-                                        Forgot Password
+                                    <Text className="text-black text-3xl font-semibold mb-2">
+                                        Verify Email
                                     </Text>
                                     <Text className="text-gray-500 text-center mb-10 px-4">
-                                        Enter your email address and we'll send you a link to reset your password.
+                                        We sent a 6-digit code to {email}. Please enter it below.
                                     </Text>
                                 </View>
 
                                 <View className="mb-4">
                                     <Text className="text-black font-bold text-lg ml-4 mb-2">
-                                        Email
+                                        OTP
                                     </Text>
                                     <View className="flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2">
-                                        <Ionicons name="mail-outline" size={20} color="gray" />
+                                        <Ionicons name="keypad-outline" size={20} color="gray" />
                                         <TextInput
                                             className="ml-2 flex-1 py-3"
-                                            placeholder="Enter your Email"
-                                            keyboardType="email-address"
+                                            placeholder="Enter 6-digit OTP"
+                                            keyboardType="number-pad"
                                             autoCapitalize="none"
-                                            autoCorrect={false}
-                                            value={email}
-                                            onChangeText={setEmail}
+                                            maxLength={6}
+                                            value={otp}
+                                            onChangeText={setOtp}
                                             editable={!isLoading}
                                         />
                                     </View>
@@ -127,13 +110,13 @@ export default function ForgotPasswordScreen() {
                 <View className="mb-10 px-5 py-4 bg-white border-t border-gray-100">
                     <TouchableOpacity
                         className={`w-full justify-center items-center py-4 rounded-full ${isLoading ? 'bg-gray-400' : 'bg-black'}`}
-                        onPress={handleSendOTP}
+                        onPress={handleVerifyOTP}
                         disabled={isLoading}
                     >
                         {isLoading ? (
                             <ActivityIndicator color="white" />
                         ) : (
-                            <Text className="text-white text-lg font-bold">Send Reset Link</Text>
+                            <Text className="text-white text-lg font-bold">Verify OTP</Text>
                         )}
                     </TouchableOpacity>
                 </View>

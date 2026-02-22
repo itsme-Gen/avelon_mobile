@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useAuthStore } from "@/stores/auth.store";
+import { validateEmail } from "@/utils/validation.util";
 
 export default function SignInScreen() {
     const [email, setEmail] = useState("");
@@ -28,28 +29,28 @@ export default function SignInScreen() {
     const handleLogin = async () => {
         // Clear previous errors
         clearError();
-        router.replace("/(tabs)/Home")
 
-        // // Basic validation
-        // if (!email.trim()) {
-        //     Alert.alert("Validation Error", "Please enter your email");
-        //     return;
-        // }
-        // if (!password) {
-        //     Alert.alert("Validation Error", "Please enter your password");
-        //     return;
-        // }
+        // Validate email
+        const emailError = validateEmail(email);
+        if (emailError) {
+            Alert.alert("Validation Error", emailError);
+            return;
+        }
 
-        // const success = await login(email.trim(), password);
+        // Validate password
+        if (!password) {
+            Alert.alert("Validation Error", "Please enter your password");
+            return;
+        }
 
-        // if (success) {
-        //     // TODO: Navigate to main dashboard when implemented
-        //     Alert.alert("Success", "You are now logged in!", [
-        //         { text: "OK", onPress: () => router.replace("/") }
-        //     ]);
-        // } else if (error) {
-        //     Alert.alert("Login Failed", error);
-        // }
+        const success = await login(email.trim().toLowerCase(), password);
+
+        if (success) {
+            router.replace("/(tabs)/Home");
+        } else {
+            const errorMessage = useAuthStore.getState().error;
+            Alert.alert("Login Failed", errorMessage || "Invalid email or password");
+        }
     };
 
     return (

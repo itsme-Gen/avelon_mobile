@@ -3,8 +3,7 @@
  * Base configuration for API requests
  */
 
-// TODO: Update with actual backend URL
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
+import { API_BASE_URL } from '../config';
 
 /**
  * Base fetch wrapper with common configuration

@@ -7,7 +7,8 @@
 
 // API Configuration
 // Use your machine's local IP for physical device testing
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.48:3001/api/v1";
+// Set EXPO_PUBLIC_API_URL in .env file (see .env.example)
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 // App Information
 export const APP_NAME = "Avelon";

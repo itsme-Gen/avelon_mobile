@@ -2,8 +2,11 @@
  * Application Constants
  */
 
-// API Configuration
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
+// Import API configuration from central config
+import { API_BASE_URL as CONFIG_API_URL } from '../config';
+
+// Re-export for backward compatibility
+export const API_BASE_URL = CONFIG_API_URL;
 
 // App Information
 export const APP_NAME = "Avelon";
