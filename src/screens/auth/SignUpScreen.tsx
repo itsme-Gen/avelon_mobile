@@ -22,6 +22,7 @@ import {
   validateName,
   validatePassword,
   getPasswordStrength,
+  sanitizeNameInput,
 } from "../../utils/validation.util";
 
 
@@ -38,6 +39,7 @@ export default function SignUpScreen() {
   // Error states for real-time validation
   const [errors, setErrors] = useState({
     firstName: "",
+    middleName: "",
     lastName: "",
     email: "",
     password: "",
@@ -47,6 +49,7 @@ export default function SignUpScreen() {
   // Track which fields have been touched (blurred)
   const [touched, setTouched] = useState({
     firstName: false,
+    middleName: false,
     lastName: false,
     email: false,
     password: false,
@@ -77,13 +80,14 @@ export default function SignUpScreen() {
       lastName.trim() &&
       email.trim() &&
       validateName(firstName, "First name") === "" &&
+      validateName(middleName, "Middle name", true) === "" &&
       validateName(lastName, "Last name") === "" &&
       validateEmail(email) === "" &&
       validatePassword(password) === null &&
       password === confirmPassword &&
       confirmPassword.length > 0
     );
-  }, [firstName, lastName, email, password, confirmPassword]);
+  }, [firstName, middleName, lastName, email, password, confirmPassword]);
 
   // Handle field validation on blur
   const handleBlur = (field: string) => {
@@ -94,6 +98,12 @@ export default function SignUpScreen() {
         setErrors((prev) => ({
           ...prev,
           firstName: validateName(firstName, "First name"),
+        }));
+        break;
+      case "middleName":
+        setErrors((prev) => ({
+          ...prev,
+          middleName: validateName(middleName, "Middle name", true),
         }));
         break;
       case "lastName":
@@ -143,6 +153,7 @@ export default function SignUpScreen() {
     // Mark all fields as touched
     setTouched({
       firstName: true,
+      middleName: true,
       lastName: true,
       email: true,
       password: true,
@@ -154,6 +165,14 @@ export default function SignUpScreen() {
     if (firstNameError) {
       setErrors((prev) => ({ ...prev, firstName: firstNameError }));
       Alert.alert("Validation Error", firstNameError);
+      return;
+    }
+
+    // Validate middle name (optional)
+    const middleNameError = validateName(middleName, "Middle name", true);
+    if (middleNameError) {
+      setErrors((prev) => ({ ...prev, middleName: middleNameError }));
+      Alert.alert("Validation Error", middleNameError);
       return;
     }
 
@@ -207,7 +226,7 @@ export default function SignUpScreen() {
       Alert.alert(
         "Registration Successful",
         "Please check your email to verify your account.",
-        [{ text: "OK", onPress: () => router.push("/(auth)/signin") }],
+        [{ text: "OK", onPress: () => router.push(`/(auth)/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`) }],
       );
     } else {
       Alert.alert("Registration Failed", result.message);
@@ -257,11 +276,10 @@ export default function SignUpScreen() {
                       First Name
                     </Text>
                     <View
-                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${
-                        touched.firstName && errors.firstName
-                          ? "border-2 border-red-500"
-                          : ""
-                      }`}
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.firstName && errors.firstName
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
                     >
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
@@ -269,18 +287,23 @@ export default function SignUpScreen() {
                         placeholder="Enter your First Name"
                         value={firstName}
                         onChangeText={(value) => {
-                          setFirstName(value);
+                          const sanitized = sanitizeNameInput(value);
+                          setFirstName(sanitized);
                           if (touched.firstName) {
                             setErrors((prev) => ({
                               ...prev,
-                              firstName: validateName(value, "First name"),
+                              firstName: validateName(sanitized, "First name"),
                             }));
                           }
                         }}
                         onBlur={() => handleBlur("firstName")}
                         editable={!isLoading}
+                        autoCorrect={false}
+                        autoCapitalize="words"
                         accessibilityLabel="First name input"
                         accessibilityHint="Enter your first name"
+                        textContentType="givenName"
+                        autoComplete="name-given"
                       />
                       {touched.firstName &&
                         !errors.firstName &&
@@ -307,18 +330,51 @@ export default function SignUpScreen() {
                         (Optional)
                       </Text>
                     </Text>
-                    <View className="flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2">
+                    <View
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.middleName && errors.middleName
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
+                    >
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
                         className="ml-2 flex-1 py-3"
                         placeholder="Enter your Middle Name"
                         value={middleName}
-                        onChangeText={setMiddleName}
+                        onChangeText={(value) => {
+                          const sanitized = sanitizeNameInput(value);
+                          setMiddleName(sanitized);
+                          if (touched.middleName) {
+                            setErrors((prev) => ({
+                              ...prev,
+                              middleName: validateName(sanitized, "Middle name", true),
+                            }));
+                          }
+                        }}
+                        onBlur={() => handleBlur("middleName")}
                         editable={!isLoading}
+                        autoCorrect={false}
+                        autoCapitalize="words"
                         accessibilityLabel="Middle name input"
                         accessibilityHint="Enter your middle name (optional)"
+                        textContentType="middleName"
+                        autoComplete="name-middle"
                       />
+                      {touched.middleName &&
+                        !errors.middleName &&
+                        middleName.trim() && (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={20}
+                            color="green"
+                          />
+                        )}
                     </View>
+                    {touched.middleName && errors.middleName ? (
+                      <Text className="text-red-500 text-xs ml-4 mt-1">
+                        {errors.middleName}
+                      </Text>
+                    ) : null}
                   </View>
 
                   {/* LAST NAME */}
@@ -327,11 +383,10 @@ export default function SignUpScreen() {
                       Last Name
                     </Text>
                     <View
-                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${
-                        touched.lastName && errors.lastName
-                          ? "border-2 border-red-500"
-                          : ""
-                      }`}
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.lastName && errors.lastName
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
                     >
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
@@ -339,18 +394,23 @@ export default function SignUpScreen() {
                         placeholder="Enter your Last Name"
                         value={lastName}
                         onChangeText={(value) => {
-                          setLastName(value);
+                          const sanitized = sanitizeNameInput(value);
+                          setLastName(sanitized);
                           if (touched.lastName) {
                             setErrors((prev) => ({
                               ...prev,
-                              lastName: validateName(value, "Last name"),
+                              lastName: validateName(sanitized, "Last name"),
                             }));
                           }
                         }}
                         onBlur={() => handleBlur("lastName")}
                         editable={!isLoading}
+                        autoCorrect={false}
+                        autoCapitalize="words"
                         accessibilityLabel="Last name input"
                         accessibilityHint="Enter your last name"
+                        textContentType="familyName"
+                        autoComplete="name-family"
                       />
                       {touched.lastName &&
                         !errors.lastName &&
@@ -375,11 +435,10 @@ export default function SignUpScreen() {
                       Email
                     </Text>
                     <View
-                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${
-                        touched.email && errors.email
-                          ? "border-2 border-red-500"
-                          : ""
-                      }`}
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.email && errors.email
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
                     >
                       <Ionicons name="mail-outline" size={20} color="gray" />
                       <TextInput
@@ -402,6 +461,8 @@ export default function SignUpScreen() {
                         editable={!isLoading}
                         accessibilityLabel="Email input"
                         accessibilityHint="Enter your email address"
+                        textContentType="username"
+                        autoComplete="email"
                       />
                       {touched.email && !errors.email && email.trim() && (
                         <Ionicons
@@ -424,11 +485,10 @@ export default function SignUpScreen() {
                       Password
                     </Text>
                     <View
-                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${
-                        touched.password && errors.password
-                          ? "border-2 border-red-500"
-                          : ""
-                      }`}
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.password && errors.password
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
                     >
                       <Ionicons
                         name="lock-closed-outline"
@@ -470,6 +530,8 @@ export default function SignUpScreen() {
                         editable={!isLoading}
                         accessibilityLabel="Password input"
                         accessibilityHint="Create a secure password"
+                        textContentType="password"
+                        autoComplete="password"
                       />
                       <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
@@ -491,23 +553,21 @@ export default function SignUpScreen() {
                           {[1, 2, 3, 4, 5].map((level) => (
                             <View
                               key={level}
-                              className={`h-1 flex-1 rounded ${
-                                passwordStrength >= level
-                                  ? strengthDisplay.color
-                                  : "bg-gray-300"
-                              }`}
+                              className={`h-1 flex-1 rounded ${passwordStrength >= level
+                                ? strengthDisplay.color
+                                : "bg-gray-300"
+                                }`}
                             />
                           ))}
                         </View>
                         {strengthDisplay.label && (
                           <Text
-                            className={`text-xs ${
-                              passwordStrength <= 2
-                                ? "text-red-500"
-                                : passwordStrength <= 4
-                                  ? "text-yellow-500"
-                                  : "text-green-500"
-                            }`}
+                            className={`text-xs ${passwordStrength <= 2
+                              ? "text-red-500"
+                              : passwordStrength <= 4
+                                ? "text-yellow-500"
+                                : "text-green-500"
+                              }`}
                           >
                             Password strength: {strengthDisplay.label}
                           </Text>
@@ -532,11 +592,10 @@ export default function SignUpScreen() {
                       Confirm Password
                     </Text>
                     <View
-                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${
-                        touched.confirmPassword && errors.confirmPassword
-                          ? "border-2 border-red-500"
-                          : ""
-                      }`}
+                      className={`flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2 ${touched.confirmPassword && errors.confirmPassword
+                        ? "border-2 border-red-500"
+                        : ""
+                        }`}
                     >
                       <Ionicons
                         name="lock-closed-outline"
@@ -553,6 +612,8 @@ export default function SignUpScreen() {
                         editable={!isLoading}
                         accessibilityLabel="Confirm password input"
                         accessibilityHint="Re-enter your password to confirm"
+                        textContentType="password"
+                        autoComplete="password"
                       />
                       {confirmPassword &&
                         password === confirmPassword &&
@@ -604,9 +665,8 @@ export default function SignUpScreen() {
           </View>
 
           <TouchableOpacity
-            className={`w-full justify-center items-center py-4 rounded-full ${
-              !isFormValid || isLoading ? "bg-gray-400" : "bg-black"
-            }`}
+            className={`w-full justify-center items-center py-4 rounded-full ${!isFormValid || isLoading ? "bg-gray-400" : "bg-black"
+              }`}
             onPress={handleSignUp}
             disabled={!isFormValid || isLoading}
           >

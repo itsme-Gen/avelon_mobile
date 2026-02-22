@@ -94,6 +94,19 @@ export async function register(
 }
 
 /**
+ * Verify Email with OTP
+ * Calls: POST /api/v1/auth/verify-email
+ */
+export async function verifyEmail(
+    token: string,
+): Promise<{ success: boolean; message: string }> {
+    return apiRequest<{ success: boolean; message: string }>('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+    });
+}
+
+/**
  * Login with email and password
  * Calls: POST /api/v1/auth/login
  */
@@ -126,10 +139,10 @@ export async function logout(): Promise<void> {
     //     await clearAuthData();
 
     //Uncomment above if you have a logout endpoint, otherwise just clear local data and navigate
-        
+
     // Navigate to login screen (temporary - adjust path as needed)
     router.replace('/(auth)/signin');
-    
+
     //}
 }
 
