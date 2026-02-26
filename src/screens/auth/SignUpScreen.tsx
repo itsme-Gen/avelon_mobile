@@ -284,7 +284,7 @@ export default function SignUpScreen() {
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Enter your First Name"
+                        placeholder="e.g., Maria"
                         value={firstName}
                         onChangeText={(value) => {
                           const sanitized = sanitizeNameInput(value);
@@ -339,7 +339,7 @@ export default function SignUpScreen() {
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Enter your Middle Name"
+                        placeholder="e.g., Santos (optional)"
                         value={middleName}
                         onChangeText={(value) => {
                           const sanitized = sanitizeNameInput(value);
@@ -391,7 +391,7 @@ export default function SignUpScreen() {
                       <Ionicons name="person-outline" size={20} color="gray" />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Enter your Last Name"
+                        placeholder="e.g., Dela Cruz"
                         value={lastName}
                         onChangeText={(value) => {
                           const sanitized = sanitizeNameInput(value);
@@ -443,7 +443,7 @@ export default function SignUpScreen() {
                       <Ionicons name="mail-outline" size={20} color="gray" />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Enter your Email"
+                        placeholder="e.g., maria.santos@example.com"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -497,7 +497,7 @@ export default function SignUpScreen() {
                       />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Create a Password"
+                        placeholder="Create a strong password (min 8 chars)"
                         secureTextEntry={!showPassword}
                         value={password}
                         onChangeText={(value) => {
@@ -604,7 +604,7 @@ export default function SignUpScreen() {
                       />
                       <TextInput
                         className="ml-2 flex-1 py-3"
-                        placeholder="Re-enter your Password"
+                        placeholder="Re-enter the same password"
                         secureTextEntry={!showConfirmPassword}
                         value={confirmPassword}
                         onChangeText={handleConfirmPasswordChange}
