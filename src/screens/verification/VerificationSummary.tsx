@@ -9,7 +9,7 @@ export default function VerificationSummary() {
 
     return (
         <View className="flex-1 bg-gray-50">
-            <ScrollView 
+            <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
             >
@@ -36,33 +36,33 @@ export default function VerificationSummary() {
 
                     {/* Info Items */}
                     <View className="space-y-4 mb-6">
-                        <InfoItem 
-                            icon="calendar-outline" 
-                            label="June 07, 1997" 
+                        <InfoItem
+                            icon="calendar-outline"
+                            label="June 07, 1997"
                         />
-                        <InfoItem 
-                            icon="male-outline" 
-                            label="Male" 
+                        <InfoItem
+                            icon="male-outline"
+                            label="Male"
                         />
-                        <InfoItem 
-                            icon="person-outline" 
-                            label="Single" 
+                        <InfoItem
+                            icon="person-outline"
+                            label="Single"
                         />
-                        <InfoItem 
-                            icon="school-outline" 
-                            label="College Graduate" 
+                        <InfoItem
+                            icon="school-outline"
+                            label="College Graduate"
                         />
-                        <InfoItem 
-                            icon="flag-outline" 
-                            label="Philippines" 
+                        <InfoItem
+                            icon="flag-outline"
+                            label="Philippines"
                         />
-                        <InfoItem 
-                            icon="location-outline" 
-                            label="Ilocos Region" 
+                        <InfoItem
+                            icon="location-outline"
+                            label="Ilocos Region"
                         />
-                        <InfoItem 
-                            icon="location-outline" 
-                            label="Malasiqui" 
+                        <InfoItem
+                            icon="location-outline"
+                            label="Malasiqui"
                         />
                     </View>
 
@@ -72,20 +72,20 @@ export default function VerificationSummary() {
                     </Text>
 
                     <View className="space-y-4 mb-8">
-                        <InfoItem 
-                            icon="call-outline" 
-                            label="09958574125" 
+                        <InfoItem
+                            icon="call-outline"
+                            label="09958574125"
                         />
-                        <InfoItem 
-                            icon="mail-outline" 
-                            label="bosswillPogi@gmail.com" 
+                        <InfoItem
+                            icon="mail-outline"
+                            label="bosswillPogi@gmail.com"
                         />
                     </View>
                 </View>
             </ScrollView>
 
             {/* Fixed Bottom Section */}
-            <View 
+            <View
                 className="absolute bottom-0 left-0 right-0"
                 style={{ paddingBottom: Math.max(insets.bottom, 16) }}
             >
@@ -96,7 +96,7 @@ export default function VerificationSummary() {
 
                 {/* Action Buttons */}
                 <View className="px-6 pb-4 flex-row gap-3">
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         className="flex-1 bg-white border border-gray-300 rounded-full py-4"
                         onPress={() => router.back()}
                     >
@@ -104,10 +104,10 @@ export default function VerificationSummary() {
                             Back
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         className="flex-1 bg-black rounded-full py-4"
                         onPress={() => {
-                            router.push("/(verification)/Success")
+                            router.push("/(verification)/Success" as any)
                         }}
                     >
                         <Text className="text-center text-white font-semibold text-base">
@@ -121,11 +121,11 @@ export default function VerificationSummary() {
 }
 
 // Info Item Component
-function InfoItem({ 
-    icon, 
+function InfoItem({
+    icon,
     label
-}: { 
-    icon: string; 
+}: {
+    icon: string;
     label: string;
 }) {
     return (

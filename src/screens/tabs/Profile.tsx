@@ -60,7 +60,7 @@ export default function Profile() {
             </View>
           ) : (
             // Profile Settings (After Verification)
-            <ProfileSettings onResetVerification={() => setIsVerified(false)} />
+            <ProfileSettings />
           )}
 
           {/* Bottom Navigation */}
