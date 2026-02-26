@@ -12,6 +12,10 @@ interface SettingsItemProps {
   iconColor?: string;
 }
 
+interface ProfileSettingsProps {
+  onResetVerification?: () => void;
+}
+
 function SettingsItem({ 
   icon, 
   label,
@@ -33,7 +37,7 @@ function SettingsItem({
   );
 }
 
-export default function ProfileSettings() {
+export default function ProfileSettings({ onResetVerification }: ProfileSettingsProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
 

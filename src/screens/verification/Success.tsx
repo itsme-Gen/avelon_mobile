@@ -1,8 +1,10 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useVerificationStore } from '@/stores/verification.store';
 
 export default function Success() {
+    const markVerified = useVerificationStore((state) => state.markVerified);
     return (
         <View className="flex-1 bg-white items-center justify-center px-8">
             {/* Success Icon */}
@@ -25,13 +27,13 @@ export default function Success() {
             {/* Continue Button */}
             <TouchableOpacity
                 onPress={() => {
-                    // Navigate back to profile with verified state
-                    router.replace("/(tabs)/Profile?verified=true");
+                    markVerified();
+                    router.replace("/(tabs)/Home");
                 }}
                 className="bg-black w-full py-4 rounded-full"
             >
                 <Text className="text-white font-semibold text-base text-center">
-                    Continue to Profile
+                    Proceed
                 </Text>
             </TouchableOpacity>
         </View>

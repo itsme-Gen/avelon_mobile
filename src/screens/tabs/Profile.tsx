@@ -1,22 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useVerificationStore } from "@/stores/verification.store";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ProfileSettings from "../../screens/settings/ProfileSettings"; // Adjust path as needed
+import ProfileSettings from "../../screens/settings/ProfileSettings"
+
+
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
-  const [isVerified, setIsVerified] = useState(false); // TODO: Replace with actual backend state
+  const { isVerified } = useVerificationStore();
   const router = useRouter();
-  const params = useLocalSearchParams();
-
-  // Check if user just completed verification
-  useEffect(() => {
-    if (params.verified === "true") {
-      setIsVerified(true);
-    }
-  }, [params.verified]);
 
   return (
     <SafeAreaView

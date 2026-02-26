@@ -1,4 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { useVerificationStore } from "@/stores/verification.store";
 import {
   Dimensions,
   ScrollView,
@@ -11,6 +14,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get("window").width;
+  const [showVerification, setShowVerification] = useState(false);
+  const isVerified = useVerificationStore((state) => state.isVerified);
+  const router = useRouter();
 
   const chartData = {
     labels: ["1h", "6h", "12h", "1D", "1W", "1M", "3M", "1Y", "5Y", "ALL"],
@@ -44,135 +50,204 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-white"
-      edges={["right", "bottom", "left"]}
-    >
-      <ScrollView
-        className="flex-1 mt-5"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-      >
-        {/* Hero Section */}
-        <View className="px-5">
-          <Text className="text-xl font-semibold text-gray-900 mb-4">
-            Borrow crypto, instantly!
-          </Text>
+    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
+      {showVerification ? (
+        <View className="flex-1 bg-white">
+          <TouchableOpacity
+            onPress={() => setShowVerification(false)}
+            className="absolute top-3 right-6 z-10 w-10 h-10 items-center justify-center"
+          >
+            <Ionicons name="close" size={28} color="#000" />
+          </TouchableOpacity>
 
-          {/* Balance Cards */}
-          <View className="flex-row justify-between gap-3 mb-6">
-            {/* Current Balance Card */}
-            <View className="flex-1 bg-gray-50 rounded-2xl p-4">
-              <View className="flex-row items-center mb-2">
-                <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-                <Text className="text-xs text-gray-600">Current</Text>
+          <View className="flex-1 items-center justify-center px-8">
+            <View className="relative mb-12">
+              <View className="w-32 h-32 items-center justify-center">
+                <View className="absolute top-0 right-0">
+                  <View className="bg-orange-400 w-20 h-24 rounded-lg items-center justify-center">
+                    <View className="w-12 h-16">
+                      <View className="absolute top-2 left-2 w-2 h-12 bg-white rounded-full rotate-45" />
+                      <View className="absolute top-4 left-6 w-2 h-10 bg-white rounded-full rotate-45" />
+                      <View className="absolute top-6 left-10 w-2 h-8 bg-white rounded-full rotate-45" />
+                    </View>
+                  </View>
+                </View>
+                <View className="absolute bottom-0 left-4 w-16 h-16 bg-blue-100 rounded-full items-center justify-center">
+                  <View className="w-12 h-12 bg-blue-500 rounded-full items-center justify-center">
+                    <Ionicons name="shield-checkmark" size={24} color="#fff" />
+                  </View>
+                </View>
               </View>
-              <Text className="text-sm text-gray-500 mb-1">Balance</Text>
-              <Text className="text-base font-bold text-gray-900">
-                0.05245412 ETH
-              </Text>
             </View>
 
-            {/* Loan Application Card */}
-            <TouchableOpacity className="flex-1 bg-[#FF8C42] rounded-2xl p-4">
-              <View className="flex-row items-center mb-2">
-                <View className="w-2 h-2 rounded-full bg-white mr-2" />
-                <Text className="text-xs text-white">Loan</Text>
-              </View>
-              <Text className="text-sm text-white mb-1">Application</Text>
-              <Text className="text-base font-bold text-white">
-                Apply for a Loan
+            <Text className="text-2xl font-bold mb-4 text-center">
+              Let's get you verified
+            </Text>
+
+            <Text className="text-gray-600 text-center leading-6 mb-12">
+              To ensure secure access and the proper use of Avaion's features
+              and services, we kindly request that you verify your identity.
+              This verification is necessary to confirm your authenticity.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => router.push("/(verification)/BasicInformation")}
+              className="bg-black w-full py-4 rounded-full"
+            >
+              <Text className="text-white font-semibold text-base text-center">
+                Get Started
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Chart Section */}
-          <View className="bg-white rounded-2xl mb-6">
-            <Text className="text-base font-semibold text-gray-900 mb-3">
-              ETH Price Volatility Prediction
-            </Text>
-
-            <LineChart
-              data={chartData}
-              width={screenWidth - 72}
-              height={180}
-              chartConfig={chartConfig}
-              bezier
-              style={{
-                marginVertical: 4,
-                borderRadius: 12,
-              }}
-              withInnerLines={true}
-              withOuterLines={false}
-              withVerticalLines={false}
-              withHorizontalLines={true}
-              withDots={true}
-              withShadow={true}
-              segments={4}
-            />
-
-            {/* Current Value Indicator */}
-            <View className="flex-row items-center justify-center mt-2">
-              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-              <Text className="text-xs text-gray-600">
-                Current Value: Full ($3216%)
-              </Text>
+        </View>
+      ) : !isVerified ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
+            <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
+              <Ionicons name="shield-checkmark" size={32} color="#fff" />
             </View>
           </View>
 
-          {/* Available Loans Section */}
-          <View className="mb-6">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-semibold text-gray-900">
-                Available Loans
-              </Text>
-              <TouchableOpacity>
-                <Text className="text-sm text-[#FF8C42] font-medium">
-                  See all
+          <Text className="text-base text-gray-700 mb-6 text-center">
+            verify your account now to see details!
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => setShowVerification(true)}
+            className="bg-black px-12 py-4 rounded-full"
+          >
+            <Text className="text-white font-semibold text-base">
+              Verify Account
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1 mt-5"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          {/* Hero Section */}
+          <View className="px-5">
+            <Text className="text-xl font-semibold text-gray-900 mb-4">
+              Borrow crypto, instantly!
+            </Text>
+
+            {/* Balance Cards */}
+            <View className="flex-row justify-between gap-3 mb-6">
+              {/* Current Balance Card */}
+              <View className="flex-1 bg-gray-50 rounded-2xl p-4">
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                  <Text className="text-xs text-gray-600">Current</Text>
+                </View>
+                <Text className="text-sm text-gray-500 mb-1">Balance</Text>
+                <Text className="text-base font-bold text-gray-900">
+                  0.05245412 ETH
+                </Text>
+              </View>
+
+              {/* Loan Application Card */}
+              <TouchableOpacity className="flex-1 bg-[#FF8C42] rounded-2xl p-4">
+                <View className="flex-row items-center mb-2">
+                  <View className="w-2 h-2 rounded-full bg-white mr-2" />
+                  <Text className="text-xs text-white">Loan</Text>
+                </View>
+                <Text className="text-sm text-white mb-1">Application</Text>
+                <Text className="text-base font-bold text-white">
+                  Apply for a Loan
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Loan Card 1 - Starting Loan */}
-            <TouchableOpacity className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center">
-              <View className="w-1 h-16 bg-green-500 rounded-full mr-4" />
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 mb-1">
-                  Starting Loan Plan
-                </Text>
-                <Text className="text-xs text-gray-500 mb-2">
-                  APR: 5% • 12 months
-                </Text>
-                <Text className="text-lg font-bold text-gray-900">
-                  0.00001452 ETH
-                </Text>
-              </View>
-              <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </View>
-            </TouchableOpacity>
+            {/* Chart Section */}
+            <View className="bg-white rounded-2xl mb-6">
+              <Text className="text-base font-semibold text-gray-900 mb-3">
+                ETH Price Volatility Prediction
+              </Text>
 
-            {/* Loan Card 2 - Beginner Loan */}
-            <TouchableOpacity className="bg-gray-50 rounded-2xl p-4 flex-row items-center">
-              <View className="w-1 h-16 bg-red-500 rounded-full mr-4" />
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 mb-1">
-                  Beginner Loan
-                </Text>
-                <Text className="text-xs text-gray-500 mb-2">
-                  APR: 7% • 6 months
-                </Text>
-                <Text className="text-lg font-bold text-gray-900">
-                  0.00062512 ETH
+              <LineChart
+                data={chartData}
+                width={screenWidth - 72}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={{
+                  marginVertical: 4,
+                  borderRadius: 12,
+                }}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withHorizontalLines={true}
+                withDots={true}
+                withShadow={true}
+                segments={4}
+              />
+
+              {/* Current Value Indicator */}
+              <View className="flex-row items-center justify-center mt-2">
+                <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                <Text className="text-xs text-gray-600">
+                  Current Value: Full ($3216%)
                 </Text>
               </View>
-              <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </View>
+
+            {/* Available Loans Section */}
+            <View className="mb-6">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-semibold text-gray-900">
+                  Available Loans
+                </Text>
+                <TouchableOpacity>
+                  <Text className="text-sm text-[#FF8C42] font-medium">
+                    See all
+                  </Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+
+              {/* Loan Card 1 - Starting Loan */}
+              <TouchableOpacity className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center">
+                <View className="w-1 h-16 bg-green-500 rounded-full mr-4" />
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-gray-900 mb-1">
+                    Starting Loan Plan
+                  </Text>
+                  <Text className="text-xs text-gray-500 mb-2">
+                    APR: 5% / 12 months
+                  </Text>
+                  <Text className="text-lg font-bold text-gray-900">
+                    0.00001452 ETH
+                  </Text>
+                </View>
+                <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Loan Card 2 - Beginner Loan */}
+              <TouchableOpacity className="bg-gray-50 rounded-2xl p-4 flex-row items-center">
+                <View className="w-1 h-16 bg-red-500 rounded-full mr-4" />
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-gray-900 mb-1">
+                    Beginner Loan
+                  </Text>
+                  <Text className="text-xs text-gray-500 mb-2">
+                    APR: 7% / 6 months
+                  </Text>
+                  <Text className="text-lg font-bold text-gray-900">
+                    0.00062512 ETH
+                  </Text>
+                </View>
+                <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
