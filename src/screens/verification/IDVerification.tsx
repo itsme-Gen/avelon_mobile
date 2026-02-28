@@ -6,6 +6,7 @@ import { CustomAlert } from '../../components/alertbutton/CustomAlert';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useVerificationStore } from '@/stores/verification.store';
 
 interface AlertConfig {
   visible: boolean;
@@ -22,9 +23,11 @@ interface AlertConfig {
 
 export default function IDVerification() {
   const insets = useSafeAreaInsets();
-  const [selectedIdFront, setSelectedIdFront] = useState<string | null>(null);
-  const [selectedIdBack, setSelectedIdBack] = useState<string | null>(null);
-  const [selectedSignature, setSelectedSignature] = useState<string | null>(null);
+  const savedDocs = useVerificationStore((s) => s.idDocuments);
+  const setIdDocuments = useVerificationStore((s) => s.setIdDocuments);
+  const [selectedIdFront, setSelectedIdFront] = useState<string | null>(savedDocs.frontUri);
+  const [selectedIdBack, setSelectedIdBack] = useState<string | null>(savedDocs.backUri);
+  const [selectedSignature, setSelectedSignature] = useState<string | null>(savedDocs.signatureUri);
   
   const [alert, setAlert] = useState<AlertConfig>({
     visible: false,
@@ -37,7 +40,7 @@ export default function IDVerification() {
   };
 
   const closeAlert = () => {
-    setAlert({ ...alert, visible: false });
+    setAlert((prev) => ({ ...prev, visible: false }));
   };
 
   // Request permissions
@@ -180,11 +183,11 @@ export default function IDVerification() {
 
     router.push("/(verification)/VerificationSummary");
 
-    // Navigate to next screen or submit data to backend
-    console.log('All documents uploaded:', {
-      front: selectedIdFront,
-      back: selectedIdBack,
-      signature: selectedSignature,
+    // Save document URIs to store for submission
+    setIdDocuments({
+      frontUri: selectedIdFront,
+      backUri: selectedIdBack,
+      signatureUri: selectedSignature,
     });
   };
 
