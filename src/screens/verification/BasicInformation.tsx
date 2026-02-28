@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
 import { CustomDropdown } from "../../components/customDropdown/CustomDropdown";
 import { DatePicker } from "../../components/datePicker/DatePicker";
+import { useVerificationStore } from "@/stores/verification.store";
 
 // Types
 interface Location {
@@ -47,21 +48,23 @@ const EDUCATION_LEVELS = [
 
 export default function BasicInformation() {
   const insets = useSafeAreaInsets();
+  const savedBasicInfo = useVerificationStore((s) => s.basicInfo);
+  const setBasicInfo = useVerificationStore((s) => s.setBasicInfo);
   const [formData, setFormData] = useState({
-    dateOfBirth: "",
-    gender: "",
-    civilStatus: "",
-    educationLevel: "",
-    country: "",
-    countryCode: "",
-    region: "",
-    regionCode: "",
-    province: "",
-    provinceCode: "",
-    cityTown: "",
-    cityCode: "",
-    barangay: "",
-    barangayCode: "",
+    dateOfBirth: savedBasicInfo.dateOfBirth || "",
+    gender: savedBasicInfo.gender || "",
+    civilStatus: savedBasicInfo.civilStatus || "",
+    educationLevel: savedBasicInfo.educationLevel || "",
+    country: savedBasicInfo.country || "",
+    countryCode: savedBasicInfo.countryCode || "",
+    region: savedBasicInfo.region || "",
+    regionCode: savedBasicInfo.regionCode || "",
+    province: savedBasicInfo.province || "",
+    provinceCode: savedBasicInfo.provinceCode || "",
+    cityTown: savedBasicInfo.cityTown || "",
+    cityCode: savedBasicInfo.cityCode || "",
+    barangay: savedBasicInfo.barangay || "",
+    barangayCode: savedBasicInfo.barangayCode || "",
   });
 
   // Location data states
@@ -483,6 +486,7 @@ export default function BasicInformation() {
             }`}
             onPress={() => { 
               if (isFormValid) {
+                setBasicInfo(formData);
                 router.push("/(verification)/ContactInformation");
               }
             }}
