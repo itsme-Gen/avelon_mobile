@@ -3,10 +3,13 @@ import { useState, useMemo } from "react";
 import { router } from "expo-router";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useVerificationStore } from "@/stores/verification.store";
 
 export default function ContactInformation() {
-    const [contactNumber, setContactNumber] = useState("");
-    const [email, setEmail] = useState("");
+    const savedContactInfo = useVerificationStore((s) => s.contactInfo);
+    const setContactInfo = useVerificationStore((s) => s.setContactInfo);
+    const [contactNumber, setContactNumber] = useState(savedContactInfo.contactNumber || "");
+    const [email, setEmail] = useState(savedContactInfo.secondaryEmail || "");
     const insets = useSafeAreaInsets();
 
     // Check if all required fields are filled
@@ -79,6 +82,7 @@ export default function ContactInformation() {
                     activeOpacity={0.8}
                     onPress={() => {
                         if (isFormValid) {
+                            setContactInfo({ contactNumber, secondaryEmail: email });
                             router.push("/(verification)/IDVerification");
                         }
                     }}
