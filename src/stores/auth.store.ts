@@ -4,6 +4,7 @@
  */
 import { create } from 'zustand';
 import * as authService from '@/services/auth.service';
+import { registerDeviceToken, unregisterDeviceToken } from '@/services/notification.service';
 import { getUser, saveUser, clearAuthData } from '@/utils/storage';
 import type { User } from '@/services/auth.service';
 
@@ -47,6 +48,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     error: null,
                 });
 
+                // Register FCM device token for push notifications
+                registerDeviceToken().catch(() => {});
+
                 return true;
             }
 
@@ -88,6 +92,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: true });
 
         try {
+            // Unregister FCM token before logging out
+            await unregisterDeviceToken();
             await authService.logout();
         } catch {
             // Ignore logout errors - clear local state anyway
