@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "935417763474",
+    "project_id": "avelon-properties",
+    "storage_bucket": "avelon-properties.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:935417763474:android:c4a41f7af2224ae027b84b",
+        "android_client_info": {
+          "package_name": "com.avelon.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8wtPWG76p59odW_VQ9unkIi8fzaifFN4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
