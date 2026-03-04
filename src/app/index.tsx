@@ -13,11 +13,28 @@ export default function Index() {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const initAuth = async () => {
-      await checkSession();
-      setAuthReady(true);
+      // In poor network conditions `checkSession` can hang on a fetch.
+      // Race it against a short timeout so the UI can progress.
+      const timeout = new Promise<void>((resolve) =>
+        setTimeout(resolve, 5000),
+      );
+
+      try {
+        await Promise.race([checkSession(), timeout]);
+      } finally {
+        if (isMounted) {
+          setAuthReady(true);
+        }
+      }
     };
     initAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, [checkSession]);
 
   // Loading screen → Splash screen after 2s

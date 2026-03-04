@@ -1,3 +1,3 @@
-import IDVerification from "@/screens/verification/IDVerification";
+import IDVerification from "@/screens/verification/DocumentVerification";
 
 export default IDVerification;

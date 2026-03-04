@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
 import { CustomDropdown } from "../../components/customDropdown/CustomDropdown";
 import { DatePicker } from "../../components/datePicker/DatePicker";
+import { useVerificationStore } from "@/stores/verification.store";
 
 // Types
 interface Location {
@@ -47,31 +48,27 @@ const EDUCATION_LEVELS = [
 
 export default function BasicInformation() {
   const insets = useSafeAreaInsets();
+  const savedBasicInfo = useVerificationStore((s) => s.basicInfo);
+  const setBasicInfo = useVerificationStore((s) => s.setBasicInfo);
+  const DEFAULT_COUNTRY = { name: "Philippines", code: "PH" };
   const [formData, setFormData] = useState({
-    dateOfBirth: "",
-    gender: "",
-    civilStatus: "",
-    educationLevel: "",
-    country: "",
-    countryCode: "",
-    region: "",
-    regionCode: "",
-    province: "",
-    provinceCode: "",
-    cityTown: "",
-    cityCode: "",
-    barangay: "",
-    barangayCode: "",
+    dateOfBirth: savedBasicInfo.dateOfBirth || "",
+    gender: savedBasicInfo.gender || "",
+    civilStatus: savedBasicInfo.civilStatus || "",
+    educationLevel: savedBasicInfo.educationLevel || "",
+    country: savedBasicInfo.country || DEFAULT_COUNTRY.name,
+    countryCode: savedBasicInfo.countryCode || DEFAULT_COUNTRY.code,
+    region: savedBasicInfo.region || "",
+    regionCode: savedBasicInfo.regionCode || "",
+    province: savedBasicInfo.province || "",
+    provinceCode: savedBasicInfo.provinceCode || "",
+    cityTown: savedBasicInfo.cityTown || "",
+    cityCode: savedBasicInfo.cityCode || "",
+    barangay: savedBasicInfo.barangay || "",
+    barangayCode: savedBasicInfo.barangayCode || "",
   });
 
   // Location data states
-  const [countries] = useState<DropdownOption[]>([
-    { code: "PH", name: "Philippines" },
-    { code: "US", name: "United States" },
-    { code: "CA", name: "Canada" },
-    { code: "AU", name: "Australia" },
-    { code: "UK", name: "United Kingdom" },
-  ]);
   const [regions, setRegions] = useState<Location[]>([]);
   const [provinces, setProvinces] = useState<Location[]>([]);
   const [cities, setCities] = useState<Location[]>([]);
@@ -294,22 +291,6 @@ export default function BasicInformation() {
     }
   };
 
-  const handleCountrySelect = (option: DropdownOption) => {
-    setFormData({
-      ...formData,
-      country: option.name,
-      countryCode: option.code || "",
-      region: "",
-      regionCode: "",
-      province: "",
-      provinceCode: "",
-      cityTown: "",
-      cityCode: "",
-      barangay: "",
-      barangayCode: "",
-    });
-  };
-
   const handleRegionSelect = (option: DropdownOption) => {
     setFormData({
       ...formData,
@@ -406,14 +387,6 @@ export default function BasicInformation() {
               onSelect={(option: DropdownOption) => setFormData({ ...formData, educationLevel: option.name })}
             />
 
-            {/* Country */}
-            <CustomDropdown
-              label="Country"
-              value={formData.country}
-              options={countries}
-              onSelect={handleCountrySelect}
-            />
-
             {/* Region - Only enabled if Philippines is selected */}
             <CustomDropdown
               label="Region"
@@ -483,6 +456,7 @@ export default function BasicInformation() {
             }`}
             onPress={() => { 
               if (isFormValid) {
+                setBasicInfo(formData);
                 router.push("/(verification)/ContactInformation");
               }
             }}

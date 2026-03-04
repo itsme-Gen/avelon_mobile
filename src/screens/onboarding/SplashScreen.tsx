@@ -12,7 +12,7 @@ export default function SplashScreen() {
         {/* Headline */}
         <Text
           className="text-white font-bold text-3xl leading-tight"
-          style={{ maxWidth: width * 0.65 }}
+          style={{ maxWidth: width * 0.65, fontFamily: "Syne_700Bold" }}
         >
           Decentralized Lending,{"\n"}Done Right.
         </Text>

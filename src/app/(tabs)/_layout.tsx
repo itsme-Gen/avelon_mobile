@@ -73,6 +73,7 @@ export default function TabsLayout() {
           headerTintColor: "#000",
           headerTitleStyle: {
             fontWeight: "bold",
+            fontFamily: "Syne_700Bold",
           },
           headerShadowVisible: false,
         }}
@@ -105,8 +106,23 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="Wallet"
-          options={{
-            title: "My Wallet",
+            options={{
+              title: "My Wallet",
+              headerRight: () => (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={{
+                    marginRight: 12,
+                    padding: 6,
+                  }}
+                  onPress={() => {
+                    // Handle notification press
+                    console.log("Notification pressed");
+                  }}
+              >
+                <Ionicons name="notifications-outline" size={22} color="#111827" />
+              </TouchableOpacity>
+            ),
             tabBarIcon: ({ focused }) => (
               <TabIcon
                 focused={focused}
