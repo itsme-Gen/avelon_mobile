@@ -4,11 +4,28 @@ import { useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CustomAlert } from "../../components/alertbutton/CustomAlert";
 
 export default function LoanPlans() {
   const router = useRouter();
   const [showVerification, setShowVerification] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message?: string;
+    buttons: Array<{
+      text: string;
+      onPress?: () => void;
+      style?: "default" | "cancel" | "destructive";
+    }>;
+    icon?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+  }>({
+    visible: false,
+    title: "",
+    buttons: [],
+  });
 
   const loans = [
     {
@@ -55,9 +72,65 @@ export default function LoanPlans() {
     },
   ];
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
-      {showVerification ? (
+  const handleLoanPress = (loan: { title: string; amount: string }) => {
+    if (!isVerified) {
+      setAlert({
+        visible: true,
+        title: "Account verification required",
+        message: "Please verify your account first to apply for a loan.",
+        icon: "shield-checkmark",
+        iconColor: "#0f172a",
+        buttons: [
+          {
+            text: "Verify now",
+            onPress: () => setShowVerification(true),
+          },
+          {
+            text: "Maybe later",
+            style: "cancel",
+          },
+        ],
+      });
+      return;
+    }
+
+    router.push({
+      pathname: "/loan-application",
+      params: {
+        title: loan.title,
+        amount: loan.amount,
+      },
+    });
+  };
+
+  const renderVerifyBanner = !isVerified ? (
+    <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
+      <View className="flex-1 mr-3">
+        <Text className="text-base font-semibold text-gray-900">
+          Verify your account
+        </Text>
+        <Text className="text-sm text-gray-600 mt-1">
+          Verify your account now to see loan plans.
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => setShowVerification(true)}
+        className="bg-black px-4 py-2 rounded-full"
+      >
+        <Text className="text-white font-semibold text-sm">Verify</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
+  const closeAlert = () =>
+    setAlert((prev) => ({
+      ...prev,
+      visible: false,
+    }));
+
+  if (showVerification) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
         <View className="flex-1 bg-white">
           <TouchableOpacity
             onPress={() => setShowVerification(false)}
@@ -106,54 +179,33 @@ export default function LoanPlans() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : !isVerified ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
-            <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
-              <Ionicons name="shield-checkmark" size={32} color="#fff" />
-            </View>
-          </View>
+      </SafeAreaView>
+    );
+  }
 
-          <Text className="text-base text-gray-700 mb-6 text-center">
-            verify your account now to see loan plans.
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
+      <ScrollView
+        className="flex-1 mt-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+      >
+        {/* Content */}
+        <View className="px-5">
+          {renderVerifyBanner}
+
+          <Text className="text-lg font-semibold text-black mb-6">
+            Available loans for you
           </Text>
 
-          <TouchableOpacity
-            onPress={() => setShowVerification(true)}
-            className="bg-black px-12 py-4 rounded-full"
-          >
-            <Text className="text-white font-semibold text-base">
-              Verify Account
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView
-          className="flex-1 mt-5"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
-        >
-          {/* Content */}
-          <View className="px-5">
-            <Text className="text-lg font-semibold text-black mb-6">
-              Available loans for you
-            </Text>
-
-            {/* Loan Cards */}
+          {/* Loan Cards */}
+          {isVerified ? (
             <View>
               {loans.map((loan) => (
                 <TouchableOpacity
                   key={loan.id}
                   className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/loan-application",
-                      params: {
-                        title: loan.title,
-                        amount: loan.amount,
-                      },
-                    })
-                  }
+                  onPress={() => handleLoanPress(loan)}
                 >
                   <View className={`w-1 h-16 ${loan.color} rounded-full mr-4`} />
                   <View className="flex-1">
@@ -173,9 +225,25 @@ export default function LoanPlans() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-        </ScrollView>
-      )}
+          ) : (
+            <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 items-center justify-center">
+              <Text className="text-sm text-gray-700 font-medium text-center">
+                Verify your account to see available loans.
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <CustomAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        buttons={alert.buttons}
+        onClose={closeAlert}
+        icon={alert.icon}
+        iconColor={alert.iconColor}
+      />
     </SafeAreaView>
   );
 }

@@ -110,9 +110,28 @@ export default function DocumentsScreen() {
     setActiveTab(e.nativeEvent.position);
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
-      {showVerification ? (
+  const renderVerifyBanner = !isVerified ? (
+    <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4 mx-5 mt-5 flex-row items-center justify-between">
+      <View className="flex-1 mr-3">
+        <Text className="text-base font-semibold text-gray-900">
+          Verify your account
+        </Text>
+        <Text className="text-sm text-gray-600 mt-1">
+          Verify your account to view your records.
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => setShowVerification(true)}
+        className="bg-black px-4 py-2 rounded-full"
+      >
+        <Text className="text-white font-semibold text-sm">Verify</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
+  if (showVerification) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
         <View className="flex-1 bg-white">
           <TouchableOpacity
             onPress={() => setShowVerification(false)}
@@ -161,59 +180,46 @@ export default function DocumentsScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : !isVerified ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
-            <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
-              <Ionicons name="shield-checkmark" size={32} color="#fff" />
-            </View>
-          </View>
+      </SafeAreaView>
+    );
+  }
 
-          <Text className="text-base text-gray-700 mb-6 text-center">
-            verify your account to view your records.
-          </Text>
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
+      {renderVerifyBanner}
 
+      {/* Tab Navigation (always visible) */}
+      <View className="px-5 pt-3 mb-4">
+        <View className="flex-row bg-gray-100 rounded-xl p-1">
           <TouchableOpacity
-            onPress={() => setShowVerification(true)}
-            className="bg-black px-12 py-4 rounded-full"
+            onPress={() => handleTabPress(0)}
+            className={`flex-1 py-3 rounded-lg ${activeTab === 0 ? "bg-white" : "bg-transparent"}`}
           >
-            <Text className="text-white font-semibold text-base">
-              Verify Account
+            <Text
+              className={`text-center font-semibold ${
+                activeTab === 0 ? "text-gray-900" : "text-gray-500"
+              }`}
+            >
+              Loan History
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleTabPress(1)}
+            className={`flex-1 py-3 rounded-lg ${activeTab === 1 ? "bg-white" : "bg-transparent"}`}
+          >
+            <Text
+              className={`text-center font-semibold ${
+                activeTab === 1 ? "text-gray-900" : "text-gray-500"
+              }`}
+            >
+              Payment History
             </Text>
           </TouchableOpacity>
         </View>
-      ) : (
-        <>
-          {/* Tab Navigation */}
-          <View className="px-5 pt-3 mb-4">
-            <View className="flex-row bg-gray-100 rounded-xl p-1">
-              <TouchableOpacity
-                onPress={() => handleTabPress(0)}
-                className={`flex-1 py-3 rounded-lg ${activeTab === 0 ? "bg-white" : "bg-transparent"}`}
-              >
-                <Text
-                  className={`text-center font-semibold ${
-                    activeTab === 0 ? "text-gray-900" : "text-gray-500"
-                  }`}
-                >
-                  Loan History
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleTabPress(1)}
-                className={`flex-1 py-3 rounded-lg ${activeTab === 1 ? "bg-white" : "bg-transparent"}`}
-              >
-                <Text
-                  className={`text-center font-semibold ${
-                    activeTab === 1 ? "text-gray-900" : "text-gray-500"
-                  }`}
-                >
-                  Payment History
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      </View>
 
+      {isVerified ? (
+        <>
           {/* Swipeable Content */}
           {/* @ts-ignore */}
           <PagerView
@@ -281,6 +287,14 @@ export default function DocumentsScreen() {
             </View>
           </PagerView>
         </>
+      ) : (
+        <View className="px-5 mt-2">
+          <View className="bg-gray-50 border border-gray-200 rounded-2xl px-6 py-8 items-center justify-center w-full max-w-sm self-center">
+            <Text className="text-sm text-gray-700 font-medium text-center">
+              No records yet.
+            </Text>
+          </View>
+        </View>
       )}
     </SafeAreaView>
   );

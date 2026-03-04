@@ -13,83 +13,31 @@ export default function Profile() {
   const { isVerified } = useVerificationStore();
   const router = useRouter();
 
-  return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50"
-      edges={["right", "bottom", "left"]}
-    >
-      {!showVerification ? (
-        // Profile Screen
-        <View className="flex-1">
-          {/* Profile Info */}
-          <TouchableOpacity className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6">
-            <View className="flex-row items-center gap-3">
-              <Image
-                source={{ uri: "https://via.placeholder.com/50" }}
-                className="w-12 h-12 rounded-full"
-              />
-              <View>
-                <Text className="text-base font-semibold">Jerie Lacap</Text>
-                <Text className="text-sm text-gray-500">jerie@avaion.com</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
+  const renderVerifyBanner = !isVerified ? (
+    <View className="bg-white border border-gray-200 rounded-2xl p-4 mx-4 mb-6 flex-row items-center justify-between">
+      <View className="flex-1 mr-3">
+        <Text className="text-base font-semibold text-gray-900">
+          Verify your account
+        </Text>
+        <Text className="text-sm text-gray-600 mt-1">
+          Verify your account now to see details.
+        </Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => setShowVerification(true)}
+        className="bg-black px-4 py-2 rounded-full"
+      >
+        <Text className="text-white font-semibold text-sm">Verify</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
 
-          {!isVerified ? (
-            // Verification Card (Before Verification)
-            <View className="items-center px-6 py-8">
-              <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-6">
-                <View className="w-16 h-16 bg-blue-500 rounded-full items-center justify-center">
-                  <Ionicons name="shield-checkmark" size={32} color="#fff" />
-                </View>
-              </View>
-
-              <Text className="text-base text-gray-700 mb-6 text-center">
-                verify your account now to see details!
-              </Text>
-
-              <TouchableOpacity
-                onPress={() => setShowVerification(true)}
-                className="bg-black px-12 py-4 rounded-full"
-              >
-                <Text className="text-white font-semibold text-base">
-                  Verify Account
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            // Profile Settings (After Verification)
-            <ProfileSettings />
-          )}
-
-          {/* Bottom Navigation */}
-          <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">
-            <TouchableOpacity className="items-center">
-              <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center">
-              <Ionicons name="wallet-outline" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center">
-              <Ionicons
-                name="document-text-outline"
-                size={24}
-                color="#9CA3AF"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center">
-              <Ionicons name="newspaper-outline" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center">
-              <View className="w-10 h-10 bg-orange-400 rounded-full items-center justify-center">
-                <Ionicons name="person" size={20} color="#fff" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        // Verification Screen
+  if (showVerification) {
+    return (
+      <SafeAreaView
+        className="flex-1 bg-gray-50"
+        edges={["right", "bottom", "left"]}
+      >
         <View className="flex-1 bg-white">
           {/* Close Button */}
           <TouchableOpacity
@@ -147,7 +95,62 @@ export default function Profile() {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView
+      className="flex-1 bg-gray-50"
+      edges={["right", "bottom", "left"]}
+    >
+      {/* Profile Screen */}
+      <View className="flex-1">
+        {/* Profile Info */}
+        <TouchableOpacity className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6">
+          <View className="flex-row items-center gap-3">
+            <Image
+              source={{ uri: "https://via.placeholder.com/50" }}
+              className="w-12 h-12 rounded-full"
+            />
+            <View>
+              <Text className="text-base font-semibold">Jerie Lacap</Text>
+              <Text className="text-sm text-gray-500">jerie@avaion.com</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        {renderVerifyBanner}
+
+        {/* Profile Settings always visible */}
+        <ProfileSettings />
+
+        {/* Bottom Navigation */}
+        <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">
+          <TouchableOpacity className="items-center">
+            <Ionicons name="home-outline" size={24} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity className="items-center">
+            <Ionicons name="wallet-outline" size={24} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity className="items-center">
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity className="items-center">
+            <Ionicons name="newspaper-outline" size={24} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity className="items-center">
+            <View className="w-10 h-10 bg-orange-400 rounded-full items-center justify-center">
+              <Ionicons name="person" size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
