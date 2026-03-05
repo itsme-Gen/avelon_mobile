@@ -2,6 +2,7 @@ import LandingScreen from "@/screens/onboarding/LandingScreen";
 import LoadingScreen from "@/screens/onboarding/LoadingScreen";
 import SplashScreen from "@/screens/onboarding/SplashScreen";
 import { useAuthStore } from "@/stores/auth.store";
+import { useVerificationStore } from "@/stores/verification.store";
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 
@@ -26,6 +27,10 @@ export default function Index() {
         await Promise.race([checkSession(), timeout]);
       } finally {
         if (isMounted) {
+          // Restore KYC/verification status from backend
+          if (useAuthStore.getState().isAuthenticated) {
+            useVerificationStore.getState().checkKycStatus().catch(() => {});
+          }
           setAuthReady(true);
         }
       }

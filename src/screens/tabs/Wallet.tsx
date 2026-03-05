@@ -1,10 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
-import { Dimensions, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Dimensions,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import * as walletService from "@/services/wallet.service";
+import * as marketService from "@/services/market.service";
+import type { WalletInfo, WalletBalance } from "@/services/wallet.service";
+import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
 
 const screenWidth = Dimensions.get("window").width;
 const scrollHPadding = 20;
@@ -17,22 +30,162 @@ const chartWidth =
   analyticsCardPadding * 2 -
   chartSideMargin * 2;
 
+const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
 export default function WalletScreen() {
   const [showVerification, setShowVerification] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [addressInput, setAddressInput] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
 
-  // Chart data - matching the wave pattern in screenshot
-  const chartData = {
-    labels: ["7h", "9h", "11h", "13h", "17h", "23h"],
-    datasets: [
-      {
-        data: [12, 38, -10, 30, -6, 24],
+  const [wallets, setWallets] = useState<WalletInfo[]>([]);
+  const [balances, setBalances] = useState<WalletBalance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
+
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message?: string;
+    buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }>;
+    icon?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+  }>({ visible: false, title: "", buttons: [] });
+
+  const primaryWallet = wallets.find((w) => w.isPrimary) || wallets[0];
+  const primaryBalance = primaryWallet
+    ? balances.find((b) => b.id === primaryWallet.id)
+    : undefined;
+
+  const fetchWalletData = useCallback(async () => {
+    try {
+      const [walletsRes, balancesRes] = await Promise.all([
+        walletService.getWallets(),
+        walletService.getBalances(),
+      ]);
+      if (walletsRes.success && walletsRes.data) setWallets(walletsRes.data);
+      if (balancesRes.success && balancesRes.data) setBalances(balancesRes.data);
+    } catch (error) {
+      console.error("[Wallet] Fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchMarketData = useCallback(async () => {
+    try {
+      const [priceRes, historyRes] = await Promise.all([
+        marketService.getPrice(),
+        marketService.getPriceHistory(1),
+      ]);
+      if (priceRes.success && priceRes.data) setPriceData(priceRes.data);
+      if (historyRes.success && historyRes.data) setPriceHistory(historyRes.data);
+    } catch (error) {
+      console.error("[Wallet] Market fetch error:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWalletData();
+    fetchMarketData();
+  }, [fetchWalletData, fetchMarketData]);
+
+  const handleConnect = async () => {
+    const trimmed = addressInput.trim();
+    if (!ETH_ADDRESS_REGEX.test(trimmed)) {
+      setAlert({
+        visible: true,
+        title: "Invalid Address",
+        message: "Please enter a valid Ethereum address (0x...)",
+        buttons: [{ text: "OK" }],
+        icon: "alert-circle",
+        iconColor: "#EF4444",
+      });
+      return;
+    }
+    setIsConnecting(true);
+    const result = await walletService.connectWallet(trimmed);
+    setIsConnecting(false);
+    if (result.success) {
+      setShowConnectModal(false);
+      setAddressInput("");
+      setAlert({
+        visible: true,
+        title: "Wallet Registered",
+        message: "Your wallet address has been registered. Verify it via the web dashboard to complete connection.",
+        buttons: [{ text: "OK", onPress: () => fetchWalletData() }],
+        icon: "checkmark-circle",
+        iconColor: "#10B981",
+      });
+    } else {
+      setAlert({
+        visible: true,
+        title: "Connection Failed",
+        message: result.error || "Could not connect wallet.",
+        buttons: [{ text: "OK" }],
+        icon: "alert-circle",
+        iconColor: "#EF4444",
+      });
+    }
+  };
+
+  const handleDisconnect = () => {
+    if (!primaryWallet) return;
+    setAlert({
+      visible: true,
+      title: "Disconnect Wallet",
+      message: `Remove ${primaryWallet.address.slice(0, 6)}...${primaryWallet.address.slice(-4)}?`,
+      buttons: [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Disconnect",
+          style: "destructive",
+          onPress: async () => {
+            const result = await walletService.removeWallet(primaryWallet.id);
+            if (result.success) {
+              fetchWalletData();
+            } else {
+              setAlert({
+                visible: true,
+                title: "Error",
+                message: result.error || "Failed to disconnect",
+                buttons: [{ text: "OK" }],
+                icon: "alert-circle",
+                iconColor: "#EF4444",
+              });
+            }
+          },
+        },
+      ],
+      icon: "warning",
+      iconColor: "#F59E0B",
+    });
+  };
+
+  // Build chart data from price history
+  const chartData = (() => {
+    if (priceHistory.length < 2) {
+      return {
+        labels: ["--"],
+        datasets: [{ data: [0], color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`, strokeWidth: 2.5 }],
+      };
+    }
+    const sampled = priceHistory.filter((_, i) => i % Math.max(1, Math.floor(priceHistory.length / 6)) === 0).slice(0, 6);
+    return {
+      labels: sampled.map((p) => {
+        const d = new Date(p.createdAt);
+        return `${d.getHours()}h`;
+      }),
+      datasets: [{
+        data: sampled.map((p) => p.ethPricePHP),
         color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`,
         strokeWidth: 2.5,
-      },
-    ],
-  };
+      }],
+    };
+  })();
 
   const chartConfig = {
     backgroundGradientFrom: "#ffffff",
@@ -41,10 +194,10 @@ export default function WalletScreen() {
     color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`,
     labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
     propsForDots: {
-        r: "5",
-        strokeWidth: "2.5",
-        stroke: "#ffffff",
-        fill: "#2eaa96",
+      r: "5",
+      strokeWidth: "2.5",
+      stroke: "#ffffff",
+      fill: "#2eaa96",
     },
     propsForBackgroundLines: {
       strokeDasharray: "",
@@ -149,6 +302,82 @@ export default function WalletScreen() {
         >
           {renderVerifyBanner}
 
+          {/* Connect Wallet Modal */}
+          {showConnectModal && (
+            <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200">
+              <Text className="text-base font-bold text-gray-900 mb-3">
+                Connect Wallet
+              </Text>
+              <Text className="text-sm text-gray-500 mb-3">
+                Enter your Ethereum wallet address
+              </Text>
+              <TextInput
+                className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 border border-gray-200 mb-3"
+                placeholder="0x..."
+                placeholderTextColor="#9CA3AF"
+                value={addressInput}
+                onChangeText={setAddressInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => { setShowConnectModal(false); setAddressInput(""); }}
+                  className="flex-1 bg-gray-100 rounded-full py-3 items-center"
+                >
+                  <Text className="text-sm font-semibold text-gray-700">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleConnect}
+                  disabled={isConnecting}
+                  className="flex-1 bg-black rounded-full py-3 items-center"
+                >
+                  {isConnecting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text className="text-sm font-semibold text-white">Connect</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {isLoading ? (
+            <View className="items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#f8893c" />
+            </View>
+          ) : wallets.length === 0 ? (
+            /* No Wallet State */
+            <View
+              style={{
+                backgroundColor: "#f8893c",
+                borderRadius: 28,
+                padding: 24,
+                marginBottom: 16,
+                alignItems: "center",
+              }}
+            >
+              <Ionicons name="wallet-outline" size={48} color="#fff" style={{ marginBottom: 12 }} />
+              <Text className="text-white text-lg font-bold mb-2">No Wallet Connected</Text>
+              <Text className="text-[#ffd7c1] text-sm text-center mb-5">
+                Connect your Ethereum wallet to view balances and apply for loans.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowConnectModal(true)}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.22)",
+                  borderRadius: 18,
+                  paddingVertical: 12,
+                  paddingHorizontal: 32,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.3)",
+                }}
+              >
+                <Text className="text-white font-semibold text-base">Connect Wallet</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
           {/* Balance Card */}
           <View
             style={{
@@ -183,14 +412,18 @@ export default function WalletScreen() {
                 right: 12,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
-                backgroundColor: "rgba(255,255,255,0.18)",
+                backgroundColor: primaryWallet?.isVerified
+                  ? "rgba(16,185,129,0.2)"
+                  : "rgba(255,255,255,0.18)",
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.25)",
+                borderColor: primaryWallet?.isVerified
+                  ? "rgba(16,185,129,0.4)"
+                  : "rgba(255,255,255,0.25)",
               }}
             >
-              <Text className="text-[11px] font-semibold text-[#ffeede]">
-                Blocked
+              <Text className={`text-[11px] font-semibold ${primaryWallet?.isVerified ? "text-green-100" : "text-[#ffeede]"}`}>
+                {primaryWallet?.isVerified ? "Verified" : "Pending"}
               </Text>
             </View>
 
@@ -200,10 +433,15 @@ export default function WalletScreen() {
                   Balance
                 </Text>
                 <Text className="text-white text-[28px] font-extrabold leading-tight mb-1">
-                  5.000245416 ETH
+                  {primaryBalance?.balance ? `${parseFloat(primaryBalance.balance).toFixed(6)} ETH` : "-- ETH"}
                 </Text>
-                <Text className="text-[#ffd7c1] text-sm font-semibold">
-                  $ 14625.20
+                {priceData && primaryBalance?.balance && (
+                  <Text className="text-[#ffd7c1] text-sm font-semibold">
+                    ₱ {(parseFloat(primaryBalance.balance) * priceData.ethPricePHP).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </Text>
+                )}
+                <Text className="text-[#ffe7d4] text-[10px] mt-2">
+                  {primaryWallet ? `${primaryWallet.address.slice(0, 6)}...${primaryWallet.address.slice(-4)}` : ""}
                 </Text>
               </View>
 
@@ -218,6 +456,7 @@ export default function WalletScreen() {
             >
               <TouchableOpacity
                 activeOpacity={0.85}
+                onPress={() => { setIsLoading(true); fetchWalletData(); fetchMarketData(); }}
                 style={{
                   flex: 1,
                   backgroundColor: "rgba(255,255,255,0.18)",
@@ -236,6 +475,7 @@ export default function WalletScreen() {
 
               <TouchableOpacity
                 activeOpacity={0.85}
+                onPress={handleDisconnect}
                 style={{
                   flex: 1,
                   backgroundColor: "rgba(255,255,255,0.18)",
@@ -269,35 +509,25 @@ export default function WalletScreen() {
             }}
           >
             <Text className="text-[11px] font-semibold text-[#9ca3af] uppercase mb-3">
-              Overview
+              Wallet Details
             </Text>
 
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-[15px] font-bold text-[#111827]">
-                  Credit Score
-                </Text>
-                <Text className="text-[12px] text-[#6b7280] mt-1">
-                  On-chain Reputation
-                </Text>
-              </View>
-
-              <View className="items-end">
-                <Text className="text-[26px] font-extrabold text-[#f58a2e]">
-                  120
-                </Text>
-                <View
-                  style={{
-                    width: 30,
-                    height: 4,
-                    backgroundColor: "#f8a85a",
-                    borderRadius: 6,
-                    marginTop: 2,
-                  }}
-                />
-              </View>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-[13px] text-[#6b7280]">Address</Text>
+              <Text className="text-[13px] font-medium text-[#111827]">
+                {primaryWallet ? `${primaryWallet.address.slice(0, 10)}...${primaryWallet.address.slice(-6)}` : "--"}
+              </Text>
             </View>
-
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-[13px] text-[#6b7280]">Status</Text>
+              <Text className={`text-[13px] font-medium ${primaryWallet?.isVerified ? "text-green-600" : "text-yellow-600"}`}>
+                {primaryWallet?.isVerified ? "Verified" : "Pending Verification"}
+              </Text>
+            </View>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-[13px] text-[#6b7280]">Connected Wallets</Text>
+              <Text className="text-[13px] font-medium text-[#111827]">{wallets.length}</Text>
+            </View>
           </View>
 
           {/* Analytics */}
@@ -370,49 +600,23 @@ export default function WalletScreen() {
                 }}
               />
               <Text className="text-[#6b7280] text-[11px] font-medium">
-                Current Value: PHP 10,328.74
+                {priceData ? `Current: ₱${priceData.ethPricePHP.toLocaleString()}` : "Loading..."}
               </Text>
             </View>
           </View>
+          </>
+          )}
         </ScrollView>
 
-        {/* Bottom Navigation Bar */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            // Keep the nav visible without adding an extra card background
-            backgroundColor: "transparent",
-          }}
-        >
-          <View className="flex-row justify-around items-center py-4 px-6">
-            <TouchableOpacity className="items-center justify-center p-2">
-              <Ionicons name="home-outline" size={26} color="#a0a5ad" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center justify-center p-2">
-              <Ionicons name="business-outline" size={26} color="#a0a5ad" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center justify-center p-2">
-              <View
-                style={{
-                  backgroundColor: "#f8893c",
-                  padding: 10,
-                  borderRadius: 16,
-                }}
-              >
-                <Ionicons name="wallet" size={24} color="#ffffff" />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center justify-center p-2">
-              <Ionicons name="document-text-outline" size={26} color="#a0a5ad" />
-            </TouchableOpacity>
-            <TouchableOpacity className="items-center justify-center p-2">
-              <Ionicons name="person-outline" size={26} color="#a0a5ad" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <CustomAlert
+          visible={alert.visible}
+          title={alert.title}
+          message={alert.message}
+          buttons={alert.buttons}
+          icon={alert.icon}
+          iconColor={alert.iconColor}
+          onClose={() => setAlert((prev) => ({ ...prev, visible: false }))}
+        />
       </View>
     </SafeAreaView>
   );

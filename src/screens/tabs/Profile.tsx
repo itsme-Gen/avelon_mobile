@@ -2,15 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { useAuthStore } from "@/stores/auth.store";
+import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileSettings from "../../screens/settings/ProfileSettings"
+import NotificationsScreen from "../../screens/settings/NotificationsScreen"
+import LoanHistoryScreen from "../../screens/settings/LoanHistoryScreen"
+import EditProfileScreen from "../../screens/settings/EditProfileScreen"
 
 
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showLoanHistory, setShowLoanHistory] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const { isVerified } = useVerificationStore();
+  const { user } = useAuthStore();
   const router = useRouter();
 
   const renderVerifyBanner = !isVerified ? (
@@ -31,6 +39,18 @@ export default function Profile() {
       </TouchableOpacity>
     </View>
   ) : null;
+
+  if (showNotifications) {
+    return <NotificationsScreen onBack={() => setShowNotifications(false)} />;
+  }
+
+  if (showLoanHistory) {
+    return <LoanHistoryScreen onBack={() => setShowLoanHistory(false)} />;
+  }
+
+  if (showEditProfile) {
+    return <EditProfileScreen onBack={() => setShowEditProfile(false)} />;
+  }
 
   if (showVerification) {
     return (
@@ -107,15 +127,14 @@ export default function Profile() {
       {/* Profile Screen */}
       <View className="flex-1">
         {/* Profile Info */}
-        <TouchableOpacity className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6">
+        <TouchableOpacity onPress={() => setShowEditProfile(true)} className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6">
           <View className="flex-row items-center gap-3">
-            <Image
-              source={{ uri: "https://via.placeholder.com/50" }}
-              className="w-12 h-12 rounded-full"
-            />
+            <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
+              <Ionicons name="person" size={24} color="#9CA3AF" />
+            </View>
             <View>
-              <Text className="text-base font-semibold">Jerie Lacap</Text>
-              <Text className="text-sm text-gray-500">jerie@avaion.com</Text>
+              <Text className="text-base font-semibold">{user?.name || "User"}</Text>
+              <Text className="text-sm text-gray-500">{user?.email || ""}</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
@@ -124,7 +143,7 @@ export default function Profile() {
         {renderVerifyBanner}
 
         {/* Profile Settings always visible */}
-        <ProfileSettings />
+        <ProfileSettings onOpenNotifications={() => setShowNotifications(true)} onOpenLoanHistory={() => setShowLoanHistory(true)} />
 
         {/* Bottom Navigation */}
         <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">

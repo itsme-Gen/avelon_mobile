@@ -41,6 +41,7 @@ export default function VerificationSummary() {
                 barangay: basicInfo.barangay || undefined,
                 contactNumber: contactInfo.contactNumber,
                 secondaryEmail: contactInfo.secondaryEmail || undefined,
+                idType: idDocuments.idType || undefined,
             });
 
             if (!profileResult.success) {

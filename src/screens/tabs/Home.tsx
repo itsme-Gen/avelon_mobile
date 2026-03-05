@@ -28,6 +28,7 @@ export default function HomeScreen() {
   const isVerified = useVerificationStore((state) => state.isVerified);
   const kycStatus = useVerificationStore((state) => state.kycStatus);
   const checkKycStatus = useVerificationStore((state) => state.checkKycStatus);
+  const resetFormData = useVerificationStore((state) => state.resetFormData);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -327,7 +328,10 @@ export default function HomeScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() => router.push("/(verification)/BasicInformation")}
+                onPress={() => {
+                  resetFormData();
+                  router.push("/(verification)/BasicInformation");
+                }}
                 className="bg-black w-full py-4 rounded-full"
               >
                 <Text className="text-white font-semibold text-base text-center">

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import * as authService from '@/services/auth.service';
 import { registerDeviceToken, unregisterDeviceToken } from '@/services/notification.service';
 import { getUser, saveUser, clearAuthData } from '@/utils/storage';
+import { useVerificationStore } from '@/stores/verification.store';
 import type { User } from '@/services/auth.service';
 
 interface AuthState {
@@ -15,6 +16,7 @@ interface AuthState {
     error: string | null;
 
     // Actions
+    setUser: (user: User) => void;
     login: (email: string, password: string) => Promise<boolean>;
     register: (email: string, password: string, name?: string) => Promise<{ success: boolean; message: string }>;
     logout: () => Promise<void>;
@@ -27,6 +29,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     isAuthenticated: false,
     isLoading: false,
     error: null,
+
+    setUser: (user: User) => {
+        saveUser(user);
+        set({ user });
+    },
 
     /**
      * Login with email and password
@@ -50,6 +57,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
                 // Register FCM device token for push notifications
                 registerDeviceToken().catch(() => {});
+
+                // Restore KYC/verification status
+                useVerificationStore.getState().checkKycStatus().catch(() => {});
 
                 return true;
             }

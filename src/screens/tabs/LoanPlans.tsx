@@ -1,10 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CustomAlert } from "../../components/alertbutton/CustomAlert";
+import * as loanService from "@/services/loan.service";
+import type { LoanPlan } from "@/services/loan.service";
 
 export default function LoanPlans() {
   const router = useRouter();
@@ -27,52 +29,35 @@ export default function LoanPlans() {
     buttons: [],
   });
 
-  const loans = [
-    {
-      id: 1,
-      title: "Starting Loan Plan",
-      subtitle: "Perfect for beginners",
-      amount: "0.00001452 ETH",
-      color: "bg-gray-400",
-    },
-    {
-      id: 2,
-      title: "Beginner Loan",
-      subtitle: "Great for new users",
-      amount: "0.00062512 ETH",
-      color: "bg-red-500",
-    },
-    {
-      id: 3,
-      title: "Starting Loan Plan",
-      subtitle: "Perfect for beginners",
-      amount: "0.00001452 ETH",
-      color: "bg-blue-500",
-    },
-    {
-      id: 4,
-      title: "Beginner Loan",
-      subtitle: "Great for new users",
-      amount: "0.00062512 ETH",
-      color: "bg-purple-500",
-    },
-    {
-      id: 5,
-      title: "Starting Loan Plan",
-      subtitle: "Perfect for beginners",
-      amount: "0.00001452 ETH",
-      color: "bg-orange-500",
-    },
-    {
-      id: 6,
-      title: "Beginner Loan",
-      subtitle: "Great for new users",
-      amount: "0.00062512 ETH",
-      color: "bg-teal-500",
-    },
+  const [plans, setPlans] = useState<LoanPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const PLAN_COLORS = [
+    "bg-gray-400", "bg-red-500", "bg-blue-500",
+    "bg-purple-500", "bg-orange-500", "bg-teal-500",
   ];
 
-  const handleLoanPress = (loan: { title: string; amount: string }) => {
+  const fetchPlans = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await loanService.getLoanPlans();
+      if (result.success && result.data) {
+        setPlans(result.data);
+      }
+    } catch (error) {
+      console.error('[LoanPlans] Fetch error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isVerified) {
+      fetchPlans();
+    }
+  }, [isVerified, fetchPlans]);
+
+  const handleLoanPress = (plan: LoanPlan) => {
     if (!isVerified) {
       setAlert({
         visible: true,
@@ -97,8 +82,11 @@ export default function LoanPlans() {
     router.push({
       pathname: "/loan-application",
       params: {
-        title: loan.title,
-        amount: loan.amount,
+        planId: plan.id,
+        title: plan.name,
+        amount: `${plan.maxAmount} ETH`,
+        interest: `${plan.interestRate}%`,
+        duration: String(plan.durationOptions[0] || 30),
       },
     });
   };
@@ -200,31 +188,47 @@ export default function LoanPlans() {
 
           {/* Loan Cards */}
           {isVerified ? (
-            <View>
-              {loans.map((loan) => (
-                <TouchableOpacity
-                  key={loan.id}
-                  className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
-                  onPress={() => handleLoanPress(loan)}
-                >
-                  <View className={`w-1 h-16 ${loan.color} rounded-full mr-4`} />
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900 mb-1">
-                      {loan.title}
-                    </Text>
-                    <Text className="text-xs text-gray-500 mb-2">
-                      {loan.subtitle}
-                    </Text>
-                    <Text className="text-lg font-bold text-gray-900">
-                      {loan.amount}
-                    </Text>
-                  </View>
-                  <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
-                    <Ionicons name="arrow-forward" size={20} color="#fff" />
-                  </View>
+            isLoading ? (
+              <View className="py-12 items-center">
+                <ActivityIndicator size="large" color="#1F2937" />
+                <Text className="text-sm text-gray-500 mt-3">Loading plans...</Text>
+              </View>
+            ) : plans.length > 0 ? (
+              <View>
+                {plans.map((plan, index) => (
+                  <TouchableOpacity
+                    key={plan.id}
+                    className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
+                    onPress={() => handleLoanPress(plan)}
+                  >
+                    <View className={`w-1 h-16 ${PLAN_COLORS[index % PLAN_COLORS.length]} rounded-full mr-4`} />
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold text-gray-900 mb-1">
+                        {plan.name}
+                      </Text>
+                      <Text className="text-xs text-gray-500 mb-2">
+                        {plan.interestRate}% Interest · {plan.durationOptions[0]}–{plan.durationOptions[plan.durationOptions.length - 1]} days
+                      </Text>
+                      <Text className="text-lg font-bold text-gray-900">
+                        {plan.minAmount}–{plan.maxAmount} ETH
+                      </Text>
+                    </View>
+                    <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
+                      <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View className="bg-gray-50 border border-gray-200 rounded-2xl p-6 items-center">
+                <Text className="text-sm text-gray-500 text-center">
+                  No loan plans available at the moment.
+                </Text>
+                <TouchableOpacity onPress={fetchPlans} className="mt-3">
+                  <Text className="text-sm text-[#FF8C42] font-medium">Refresh</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
+            )
           ) : (
             <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 items-center justify-center">
               <Text className="text-sm text-gray-700 font-medium text-center">

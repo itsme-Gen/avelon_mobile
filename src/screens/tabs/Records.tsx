@@ -9,10 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import type { PagerViewOnPageSelectedEvent } from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
-import PagerView from "react-native-pager-view";
+import { PagerView, type PagerViewOnPageSelectedEvent } from "@/components/PagerViewWrapper";
 
 export default function DocumentsScreen() {
   const [activeTab, setActiveTab] = useState(0);
@@ -221,7 +219,6 @@ export default function DocumentsScreen() {
       {isVerified ? (
         <>
           {/* Swipeable Content */}
-          {/* @ts-ignore */}
           <PagerView
             ref={pagerRef}
             style={styles.pagerView}

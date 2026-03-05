@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
+    ActivityIndicator,
     Image,
     Modal,
     ScrollView,
@@ -12,6 +12,8 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import * as loanService from "@/services/loan.service";
 
 function TermsAndConditionsModal({
   visible,
@@ -124,12 +126,14 @@ function TermsAndConditionsModal({
 export default function LoanApplication() {
   const router = useRouter();
   const params = useLocalSearchParams<{
+    planId: string;
     title: string;
     amount: string;
     interest?: string;
     duration?: string;
   }>();
 
+  const planId = params.planId || "";
   const loanTitle = params.title || "Starting Loan Plan";
   const loanAmount = params.amount || "0.00001452 ETH";
   const interestRate = params.interest || "5%";
@@ -138,23 +142,112 @@ export default function LoanApplication() {
   const [purpose, setPurpose] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message?: string;
+    buttons: Array<{
+      text: string;
+      onPress?: () => void;
+      style?: "default" | "cancel" | "destructive";
+    }>;
+    icon?: keyof typeof Ionicons.glyphMap;
+    iconColor?: string;
+  }>({
+    visible: false,
+    title: "",
+    buttons: [],
+  });
 
   const handleAgreeTerms = () => {
     setAgreedToTerms(true);
     setShowTerms(false);
   };
 
-  const handleApply = () => {
-    Alert.alert(
-      "Loan Applied",
-      "Your loan application has been submitted successfully.",
-      [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ],
-    );
+  const handleApply = async () => {
+    if (!planId) {
+      setAlert({
+        visible: true,
+        title: "Error",
+        message: "Invalid loan plan. Please go back and select a plan.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444",
+        buttons: [{ text: "OK" }],
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Get user's wallet
+      const walletResult = await loanService.getWallets();
+      if (!walletResult.success || !walletResult.data?.length) {
+        setAlert({
+          visible: true,
+          title: "No Wallet Connected",
+          message: "Please connect a wallet before applying for a loan.",
+          icon: "wallet-outline",
+          iconColor: "#F59E0B",
+          buttons: [{ text: "OK" }],
+        });
+        return;
+      }
+
+      const walletId = walletResult.data[0].id;
+
+      // Parse duration to number (e.g., "3 months" -> 3)
+      const durationMonths = parseInt(duration, 10) || 3;
+
+      // Parse amount - strip " ETH" suffix if present
+      const amountValue = loanAmount.replace(/\s*ETH$/i, "").trim();
+
+      const result = await loanService.applyForLoan({
+        planId,
+        amount: amountValue,
+        duration: durationMonths,
+        walletId,
+      });
+
+      if (!result.success) {
+        setAlert({
+          visible: true,
+          title: "Application Failed",
+          message: result.error || "Failed to submit loan application.",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444",
+          buttons: [{ text: "OK" }],
+        });
+        return;
+      }
+
+      setAlert({
+        visible: true,
+        title: "Loan Applied",
+        message: "Your loan application has been submitted successfully.",
+        icon: "checkmark-circle-outline",
+        iconColor: "#10B981",
+        buttons: [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("[LoanApplication] Apply error:", error);
+      setAlert({
+        visible: true,
+        title: "Error",
+        message: "Something went wrong. Please try again.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444",
+        buttons: [{ text: "OK" }],
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -292,17 +385,21 @@ export default function LoanApplication() {
       <View className="px-5 pb-6 pt-3 bg-white">
         <TouchableOpacity
           onPress={handleApply}
-          disabled={!agreedToTerms}
+          disabled={!agreedToTerms || isSubmitting}
           className={`rounded-full py-4 items-center ${
-            agreedToTerms ? "bg-gray-900" : "bg-gray-300"
+            agreedToTerms && !isSubmitting ? "bg-gray-900" : "bg-gray-300"
           }`}
-          style={{ opacity: agreedToTerms ? 1 : 0.7 }}
+          style={{ opacity: agreedToTerms && !isSubmitting ? 1 : 0.7 }}
         >
-          <Text
-            className={`text-base font-semibold ${agreedToTerms ? "text-white" : "text-gray-500"}`}
-          >
-            Apply
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text
+              className={`text-base font-semibold ${agreedToTerms ? "text-white" : "text-gray-500"}`}
+            >
+              Apply
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -312,6 +409,16 @@ export default function LoanApplication() {
         loanTitle={loanTitle}
         onAgree={handleAgreeTerms}
         onClose={() => setShowTerms(false)}
+      />
+
+      <CustomAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        buttons={alert.buttons}
+        icon={alert.icon}
+        iconColor={alert.iconColor}
+        onClose={() => setAlert((prev) => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );

@@ -14,6 +14,8 @@ interface SettingsItemProps {
 
 interface ProfileSettingsProps {
   onResetVerification?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenLoanHistory?: () => void;
 }
 
 function SettingsItem({ 
@@ -37,7 +39,7 @@ function SettingsItem({
   );
 }
 
-export default function ProfileSettings({ onResetVerification }: ProfileSettingsProps) {
+export default function ProfileSettings({ onResetVerification, onOpenNotifications, onOpenLoanHistory }: ProfileSettingsProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
 
@@ -53,6 +55,17 @@ export default function ProfileSettings({ onResetVerification }: ProfileSettings
   return (
     <>
       <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
+        {/* Notifications */}
+        <View className="mb-3 pt-4">
+          <View className="bg-white mx-4 rounded-xl overflow-hidden">
+            <SettingsItem
+              icon="notifications-outline"
+              label="Notifications"
+              onPress={() => onOpenNotifications?.()}
+            />
+          </View>
+        </View>
+
         {/* Security Section */}
         <View className="mb-3 pt-4">
           <Text className="text-sm font-semibold text-gray-400 mb-2 px-6 py-2">
@@ -102,7 +115,7 @@ export default function ProfileSettings({ onResetVerification }: ProfileSettings
             <SettingsItem 
               icon="wallet-outline" 
               label="Current Loan" 
-              onPress={() => {}}
+              onPress={() => onOpenLoanHistory?.()}
             />
           </View>
         </View>

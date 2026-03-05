@@ -19,6 +19,7 @@ export interface KycProfileData {
     barangay?: string;
     contactNumber: string;
     secondaryEmail?: string;
+    idType?: string;
 }
 
 export interface KycStatusResponse {
