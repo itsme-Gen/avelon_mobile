@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, Platform, Linking, Modal, FlatList } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useState } from 'react';
 import { ProgressDots } from '../../components/progressdot/ProgressDot';
@@ -25,10 +25,25 @@ export default function IDVerification() {
   const insets = useSafeAreaInsets();
   const savedDocs = useVerificationStore((s) => s.idDocuments);
   const setIdDocuments = useVerificationStore((s) => s.setIdDocuments);
+  const [selectedIdType, setSelectedIdType] = useState<string>(savedDocs.idType || '');
   const [selectedIdFront, setSelectedIdFront] = useState<string | null>(savedDocs.frontUri);
   const [selectedIdBack, setSelectedIdBack] = useState<string | null>(savedDocs.backUri);
   const [selectedSignature, setSelectedSignature] = useState<string | null>(savedDocs.signatureUri);
-  
+  const [selectedIncome, setSelectedIncome] = useState<string | null>(savedDocs.proofOfIncomeUri);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(savedDocs.proofOfAddressUri);
+  const [showIdTypePicker, setShowIdTypePicker] = useState(false);
+
+  const ID_TYPE_OPTIONS = [
+    { label: 'Philippine Identification (PhilID)', value: 'PhilID' },
+    { label: "Driver's License", value: 'Drivers License' },
+    { label: 'Passport', value: 'Passport' },
+    { label: 'SSS ID', value: 'SSS' },
+    { label: 'UMID', value: 'UMID' },
+    { label: 'Voter's ID', value: 'Voters ID' },
+    { label: 'PRC ID', value: 'PRC' },
+    { label: 'Postal ID', value: 'Postal ID' },
+  ];
+
   const [alert, setAlert] = useState<AlertConfig>({
     visible: false,
     title: '',
@@ -43,19 +58,36 @@ export default function IDVerification() {
     setAlert((prev) => ({ ...prev, visible: false }));
   };
 
-  // Request permissions
+  // Request permissions (handles iOS "denied permanently" by directing to Settings)
   const requestPermissions = async () => {
-    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-    const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+    let cameraPermission = await ImagePicker.getCameraPermissionsAsync();
+    if (cameraPermission.status !== 'granted') {
+      cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+    }
+
+    let mediaPermission = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (mediaPermission.status !== 'granted') {
+      mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    }
+
     return {
       camera: cameraPermission.status === 'granted',
-      media: mediaPermission.status === 'granted'
+      cameraCanAskAgain: cameraPermission.canAskAgain,
+      media: mediaPermission.status === 'granted',
+      mediaCanAskAgain: mediaPermission.canAskAgain,
     };
   };
 
+  const openSettings = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('app-settings:');
+    } else {
+      Linking.openSettings();
+    }
+  };
+
   // Show options to pick image from camera or gallery
-  const showImagePickerOptions = (type: 'front' | 'back' | 'signature') => {
+  const showImagePickerOptions = (type: 'front' | 'back' | 'signature' | 'income' | 'address') => {
     showAlert({
       title: 'Select Photo',
       message: 'Choose how you want to upload your photo',
@@ -79,61 +111,91 @@ export default function IDVerification() {
   };
 
   // Take photo with camera
-  const takePhoto = async (type: 'front' | 'back' | 'signature') => {
+  const takePhoto = async (type: 'front' | 'back' | 'signature' | 'income' | 'address') => {
     const permissions = await requestPermissions();
     
     if (!permissions.camera) {
       showAlert({
         title: 'Permission Denied',
-        message: 'Camera permission is required to take photos. Please enable it in your device settings.',
+        message: permissions.cameraCanAskAgain
+          ? 'Camera permission is required to take photos.'
+          : 'Camera permission was denied. Please enable it in Settings.',
         icon: 'camera-outline',
         iconColor: '#EF4444',
-        buttons: [{ text: 'OK' }],
+        buttons: permissions.cameraCanAskAgain
+          ? [{ text: 'OK' }]
+          : [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: openSettings }],
       });
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: type === 'signature' ? [4, 3] : [16, 9],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: type === 'signature' ? [4, 3] : [16, 9],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      setImage(type, result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setImage(type, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('[Camera] Launch failed:', error);
+      showAlert({
+        title: 'Camera Error',
+        message: 'Failed to open camera. Please try again or use the gallery option.',
+        icon: 'camera-outline',
+        iconColor: '#EF4444',
+        buttons: [{ text: 'OK' }],
+      });
     }
   };
 
   // Pick image from gallery
-  const pickImage = async (type: 'front' | 'back' | 'signature') => {
+  const pickImage = async (type: 'front' | 'back' | 'signature' | 'income' | 'address') => {
     const permissions = await requestPermissions();
     
     if (!permissions.media) {
       showAlert({
         title: 'Permission Denied',
-        message: 'Media library permission is required to select photos. Please enable it in your device settings.',
+        message: permissions.mediaCanAskAgain
+          ? 'Media library permission is required to select photos.'
+          : 'Photo library permission was denied. Please enable it in Settings.',
         icon: 'images-outline',
         iconColor: '#EF4444',
-        buttons: [{ text: 'OK' }],
+        buttons: permissions.mediaCanAskAgain
+          ? [{ text: 'OK' }]
+          : [{ text: 'Cancel', style: 'cancel' }, { text: 'Open Settings', onPress: openSettings }],
       });
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: type === 'signature' ? [4, 3] : [16, 9],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: type === 'signature' ? [4, 3] : [16, 9],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      setImage(type, result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setImage(type, result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('[Gallery] Pick failed:', error);
+      showAlert({
+        title: 'Gallery Error',
+        message: 'Failed to open gallery. Please try again or use the camera option.',
+        icon: 'images-outline',
+        iconColor: '#EF4444',
+        buttons: [{ text: 'OK' }],
+      });
     }
   };
 
   // Set image based on type
-  const setImage = (type: 'front' | 'back' | 'signature', uri: string) => {
+  const setImage = (type: 'front' | 'back' | 'signature' | 'income' | 'address', uri: string) => {
     switch (type) {
       case 'front':
         setSelectedIdFront(uri);
@@ -144,11 +206,17 @@ export default function IDVerification() {
       case 'signature':
         setSelectedSignature(uri);
         break;
+      case 'income':
+        setSelectedIncome(uri);
+        break;
+      case 'address':
+        setSelectedAddress(uri);
+        break;
     }
   };
 
   // Remove selected image
-  const removeImage = (type: 'front' | 'back' | 'signature') => {
+  const removeImage = (type: 'front' | 'back' | 'signature' | 'income' | 'address') => {
     showAlert({
       title: 'Remove Photo',
       message: 'Are you sure you want to remove this photo?',
@@ -168,12 +236,23 @@ export default function IDVerification() {
     });
   };
 
-  // Validate all images are uploaded
+  // Validate all required images are uploaded
   const handleNext = () => {
+    if (!selectedIdType) {
+      showAlert({
+        title: 'ID Type Required',
+        message: 'Please select the type of government-issued ID you are submitting.',
+        icon: 'id-card-outline',
+        iconColor: '#F59E0B',
+        buttons: [{ text: 'OK' }],
+      });
+      return;
+    }
+
     if (!selectedIdFront || !selectedIdBack || !selectedSignature) {
       showAlert({
         title: 'Incomplete Verification',
-        message: 'Please upload all required documents before proceeding.',
+        message: 'Please upload your ID (front & back) and e-signature before proceeding.',
         icon: 'alert-circle-outline',
         iconColor: '#F59E0B',
         buttons: [{ text: 'OK' }],
@@ -181,19 +260,24 @@ export default function IDVerification() {
       return;
     }
 
-    router.push("/(verification)/VerificationSummary");
-
     // Save document URIs to store for submission
     setIdDocuments({
+      idType: selectedIdType,
       frontUri: selectedIdFront,
       backUri: selectedIdBack,
       signatureUri: selectedSignature,
+      proofOfIncomeUri: selectedIncome,
+      proofOfAddressUri: selectedAddress,
     });
+
+    router.push("/(verification)/VerificationSummary");
   };
+
+  const requiredComplete = !!(selectedIdType && selectedIdFront && selectedIdBack && selectedSignature);
 
   // Render upload button with preview
   const renderUploadButton = (
-    type: 'front' | 'back' | 'signature',
+    type: 'front' | 'back' | 'signature' | 'income' | 'address',
     label: string,
     selectedImage: string | null
   ) => (
@@ -264,20 +348,58 @@ export default function IDVerification() {
               Document Verification
             </Text>
             <Text className="text-md text-gray-600 leading-5">
-              To confirm your ID information, We will need verification. Please provide
-              a clear photo of a government-issued ID—this could be a passport, national
-              ID, driver's license, or another form of ID. Make sure all details are visible
-              and legible. You'll also need to upload your signature, which will be
-              matched with the one on your ID. Please use a plain surface and position
-              the ID flat for the best results.
+              Upload a clear photo of your government-issued ID (front & back) and 
+              your e-signature. Optionally, add proof of income and address to unlock 
+              higher verification tiers.
             </Text>
           </View>
 
-          {/* Upload Buttons */}
+          {/* ID Type Selector */}
+          <View className="mb-6">
+            <Text className="text-sm font-semibold text-gray-900 mb-2">
+              Type of Government ID <Text className="text-red-500">*</Text>
+            </Text>
+            <TouchableOpacity
+              className={`border rounded-lg px-4 py-4 flex-row items-center justify-between ${
+                selectedIdType ? 'border-gray-900 bg-white' : 'border-gray-200 bg-gray-50'
+              }`}
+              onPress={() => setShowIdTypePicker(true)}
+            >
+              <Text className={selectedIdType ? 'text-gray-900 text-sm' : 'text-gray-500 text-sm'}>
+                {selectedIdType
+                  ? ID_TYPE_OPTIONS.find((o) => o.value === selectedIdType)?.label ?? selectedIdType
+                  : 'Select ID type...'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Required Documents */}
+          <View className="mb-2">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Required Documents
+            </Text>
+          </View>
+
+          <View className="gap-4 mb-8">
+            {renderUploadButton('front', 'ID Photo — Front *', selectedIdFront)}
+            {renderUploadButton('back', 'ID Photo — Back *', selectedIdBack)}
+            {renderUploadButton('signature', 'E-Signature *', selectedSignature)}
+          </View>
+
+          {/* Optional Documents */}
+          <View className="mb-2">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Optional Documents
+            </Text>
+            <Text className="text-xs text-gray-400 mb-3">
+              Upload these to unlock Standard or Enhanced verification tier
+            </Text>
+          </View>
+
           <View className="gap-4 mb-6">
-            {renderUploadButton('front', 'Submit a photo of your ID (Front)', selectedIdFront)}
-            {renderUploadButton('back', 'Submit a photo of your ID (Back)', selectedIdBack)}
-            {renderUploadButton('signature', 'Submit a photo of your E-Signature', selectedSignature)}
+            {renderUploadButton('income', 'Proof of Income (payslip, bank statement, ITR)', selectedIncome)}
+            {renderUploadButton('address', 'Proof of Address (utility bill, barangay clearance)', selectedAddress)}
           </View>
         </View>
       </ScrollView>
@@ -305,15 +427,15 @@ export default function IDVerification() {
           
           <TouchableOpacity 
             className={`flex-1 rounded-full py-4 items-center justify-center ${
-              selectedIdFront && selectedIdBack && selectedSignature 
+              requiredComplete 
                 ? 'bg-gray-900' 
                 : 'bg-gray-300'
             }`}
             onPress={handleNext}
-            disabled={!selectedIdFront || !selectedIdBack || !selectedSignature}
+            disabled={!requiredComplete}
           >
             <Text className={`font-semibold text-base ${
-              selectedIdFront && selectedIdBack && selectedSignature 
+              requiredComplete 
                 ? 'text-white' 
                 : 'text-gray-500'
             }`}>
@@ -322,6 +444,46 @@ export default function IDVerification() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ID Type Picker Modal */}
+      <Modal
+        visible={showIdTypePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowIdTypePicker(false)}
+      >
+        <TouchableOpacity
+          className="flex-1 bg-black/50 justify-end"
+          activeOpacity={1}
+          onPress={() => setShowIdTypePicker(false)}
+        >
+          <View className="bg-white rounded-t-2xl pt-4 pb-8 max-h-[60%]">
+            <View className="px-6 pb-3 border-b border-gray-100">
+              <Text className="text-lg font-bold text-gray-900">Select ID Type</Text>
+            </View>
+            <FlatList
+              data={ID_TYPE_OPTIONS}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  className={`px-6 py-4 flex-row items-center justify-between border-b border-gray-50 ${
+                    selectedIdType === item.value ? 'bg-gray-50' : ''
+                  }`}
+                  onPress={() => {
+                    setSelectedIdType(item.value);
+                    setShowIdTypePicker(false);
+                  }}
+                >
+                  <Text className="text-sm text-gray-900">{item.label}</Text>
+                  {selectedIdType === item.value && (
+                    <Ionicons name="checkmark-circle" size={20} color="#111827" />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Custom Alert */}
       <CustomAlert

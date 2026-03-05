@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import * as kycService from "@/services/kyc.service";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -25,9 +26,12 @@ export interface ContactInfoData {
 }
 
 export interface IdDocumentsData {
+  idType: string;
   frontUri: string | null;
   backUri: string | null;
   signatureUri: string | null;
+  proofOfIncomeUri: string | null;
+  proofOfAddressUri: string | null;
 }
 
 type VerificationState = {
@@ -43,6 +47,7 @@ type VerificationState = {
   markVerified: () => void;
   resetVerification: () => void;
   setKycStatus: (status: string) => void;
+  checkKycStatus: () => Promise<void>;
   setBasicInfo: (data: BasicInfoData) => void;
   setContactInfo: (data: ContactInfoData) => void;
   setIdDocuments: (data: Partial<IdDocumentsData>) => void;
@@ -72,9 +77,12 @@ const initialContactInfo: ContactInfoData = {
 };
 
 const initialIdDocuments: IdDocumentsData = {
+  idType: '',
   frontUri: null,
   backUri: null,
   signatureUri: null,
+  proofOfIncomeUri: null,
+  proofOfAddressUri: null,
 };
 
 export const useVerificationStore = create<VerificationState>((set) => ({
@@ -92,6 +100,20 @@ export const useVerificationStore = create<VerificationState>((set) => ({
       kycStatus: status,
       isVerified: status === "APPROVED" || status === "CONNECTED",
     }),
+  checkKycStatus: async () => {
+    try {
+      const result = await kycService.getKycStatus();
+      if (result.success && result.data) {
+        const status = result.data.status;
+        set({
+          kycStatus: status,
+          isVerified: status === "APPROVED" || status === "CONNECTED",
+        });
+      }
+    } catch {
+      // Keep current state on error
+    }
+  },
   setBasicInfo: (data) => set({ basicInfo: data }),
   setContactInfo: (data) => set({ contactInfo: data }),
   setIdDocuments: (data) =>

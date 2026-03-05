@@ -34,6 +34,13 @@ export default function VerificationLayout() {
         }}
       />
 
+      <Stack.Screen 
+        name="Success"
+        options={{
+          title: "Verification Success"
+        }}
+      />
+
     </Stack>
 
   );

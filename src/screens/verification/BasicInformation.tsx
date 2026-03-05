@@ -80,10 +80,26 @@ export default function BasicInformation() {
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
 
+  // Calculate age from date of birth (format: MM/DD/YYYY)
+  const ageError = useMemo(() => {
+    if (!formData.dateOfBirth) return "";
+    const [month, day, year] = formData.dateOfBirth.split("/").map(Number);
+    const birth = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    if (age < 18) return "You must be at least 18 years old";
+    return "";
+  }, [formData.dateOfBirth]);
+
   // Check if all required fields are filled
   const isFormValid = useMemo(() => {
     const baseFieldsFilled = 
       formData.dateOfBirth !== "" &&
+      ageError === "" &&
       formData.gender !== "" &&
       formData.civilStatus !== "" &&
       formData.educationLevel !== "" &&
@@ -100,7 +116,7 @@ export default function BasicInformation() {
 
     // For other countries, only base fields are required
     return baseFieldsFilled;
-  }, [formData]);
+  }, [formData, ageError]);
 
   // Fetch regions when country changes
   useEffect(() => {
@@ -361,6 +377,7 @@ export default function BasicInformation() {
             <DatePicker
               value={formData.dateOfBirth}
               onSelect={(date: string) => setFormData({ ...formData, dateOfBirth: date })}
+              errorMessage={ageError}
             />
 
             {/* Gender */}

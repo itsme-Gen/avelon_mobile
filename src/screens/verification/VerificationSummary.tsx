@@ -28,98 +28,90 @@ export default function VerificationSummary() {
         setIsSubmitting(true);
 
         try {
-            // Temporary: auto-approve until backend submission is hooked up
-            markVerified();
-            router.replace("/(tabs)/Home");
-            return;
+            // Step 1: Submit profile info
+            const profileResult = await kycService.submitKycProfile({
+                dateOfBirth: basicInfo.dateOfBirth,
+                gender: basicInfo.gender,
+                civilStatus: basicInfo.civilStatus,
+                educationLevel: basicInfo.educationLevel,
+                country: basicInfo.country,
+                region: basicInfo.region || undefined,
+                province: basicInfo.province || undefined,
+                cityTown: basicInfo.cityTown || undefined,
+                barangay: basicInfo.barangay || undefined,
+                contactNumber: contactInfo.contactNumber,
+                secondaryEmail: contactInfo.secondaryEmail || undefined,
+            });
+
+            if (!profileResult.success) {
+                setAlert({
+                    visible: true,
+                    title: 'Profile Error',
+                    message: profileResult.error || 'Failed to save profile information.',
+                    icon: 'alert-circle-outline',
+                    iconColor: '#EF4444',
+                    buttons: [{ text: 'OK' }],
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Step 2: Upload documents
+            const uploads: Array<{ uri: string | null; type: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE' | 'PROOF_OF_INCOME' | 'PROOF_OF_ADDRESS' }> = [
+                { uri: idDocuments.frontUri, type: 'GOVERNMENT_ID' },
+                { uri: idDocuments.backUri, type: 'GOVERNMENT_ID_BACK' },
+                { uri: idDocuments.signatureUri, type: 'E_SIGNATURE' },
+                { uri: idDocuments.proofOfIncomeUri, type: 'PROOF_OF_INCOME' },
+                { uri: idDocuments.proofOfAddressUri, type: 'PROOF_OF_ADDRESS' },
+            ];
+
+            for (const doc of uploads) {
+                if (!doc.uri) continue;
+                const uploadResult = await kycService.uploadDocument(doc.uri, doc.type);
+                if (!uploadResult.success) {
+                    setAlert({
+                        visible: true,
+                        title: 'Upload Error',
+                        message: uploadResult.error || `Failed to upload ${doc.type}.`,
+                        icon: 'cloud-upload-outline',
+                        iconColor: '#EF4444',
+                        buttons: [{ text: 'OK' }],
+                    });
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            // Step 3: Submit KYC for review
+            const submitResult = await kycService.submitKyc();
+            if (!submitResult.success) {
+                setAlert({
+                    visible: true,
+                    title: 'Submission Error',
+                    message: submitResult.error || 'Failed to submit KYC.',
+                    icon: 'alert-circle-outline',
+                    iconColor: '#EF4444',
+                    buttons: [{ text: 'OK' }],
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Success — navigate to success screen
+            router.push("/(verification)/Success" as any);
+        } catch (error) {
+            console.error('[VerificationSummary] Submit error:', error);
+            setAlert({
+                visible: true,
+                title: 'Error',
+                message: 'Something went wrong. Please try again.',
+                icon: 'alert-circle-outline',
+                iconColor: '#EF4444',
+                buttons: [{ text: 'OK' }],
+            });
         } finally {
             setIsSubmitting(false);
         }
-
-        
-        // try {
-        //     // Step 1: Submit profile info
-        //     const profileResult = await kycService.submitKycProfile({
-        //         dateOfBirth: basicInfo.dateOfBirth,
-        //         gender: basicInfo.gender,
-        //         civilStatus: basicInfo.civilStatus,
-        //         educationLevel: basicInfo.educationLevel,
-        //         country: basicInfo.country,
-        //         region: basicInfo.region || undefined,
-        //         province: basicInfo.province || undefined,
-        //         cityTown: basicInfo.cityTown || undefined,
-        //         barangay: basicInfo.barangay || undefined,
-        //         contactNumber: contactInfo.contactNumber,
-        //         secondaryEmail: contactInfo.secondaryEmail || undefined,
-        //     });
-
-        //     if (!profileResult.success) {
-        //         setAlert({
-        //             visible: true,
-        //             title: 'Profile Error',
-        //             message: profileResult.error || 'Failed to save profile information.',
-        //             icon: 'alert-circle-outline',
-        //             iconColor: '#EF4444',
-        //             buttons: [{ text: 'OK' }],
-        //         });
-        //         setIsSubmitting(false);
-        //         return;
-        //     }
-
-        //     // Step 2: Upload documents
-        //     const uploads = [
-        //         { uri: idDocuments.frontUri, type: 'GOVERNMENT_ID' as const },
-        //         { uri: idDocuments.backUri, type: 'GOVERNMENT_ID_BACK' as const },
-        //         { uri: idDocuments.signatureUri, type: 'E_SIGNATURE' as const },
-        //     ];
-
-        //     for (const doc of uploads) {
-        //         if (!doc.uri) continue;
-        //         const uploadResult = await kycService.uploadDocument(doc.uri, doc.type);
-        //         if (!uploadResult.success) {
-        //             setAlert({
-        //                 visible: true,
-        //                 title: 'Upload Error',
-        //                 message: uploadResult.error || `Failed to upload ${doc.type}.`,
-        //                 icon: 'cloud-upload-outline',
-        //                 iconColor: '#EF4444',
-        //                 buttons: [{ text: 'OK' }],
-        //             });
-        //             setIsSubmitting(false);
-        //             return;
-        //         }
-        //     }
-
-        //     // Step 3: Submit KYC for review
-        //     const submitResult = await kycService.submitKyc();
-        //     if (!submitResult.success) {
-        //         setAlert({
-        //             visible: true,
-        //             title: 'Submission Error',
-        //             message: submitResult.error || 'Failed to submit KYC.',
-        //             icon: 'alert-circle-outline',
-        //             iconColor: '#EF4444',
-        //             buttons: [{ text: 'OK' }],
-        //         });
-        //         setIsSubmitting(false);
-        //         return;
-        //     }
-
-        //     // Success — navigate to success screen
-        //     router.push("/(verification)/Success" as any);
-        // } catch (error) {
-        //     console.error('[VerificationSummary] Submit error:', error);
-        //     setAlert({
-        //         visible: true,
-        //         title: 'Error',
-        //         message: 'Something went wrong. Please try again.',
-        //         icon: 'alert-circle-outline',
-        //         iconColor: '#EF4444',
-        //         buttons: [{ text: 'OK' }],
-        //     });
-        // } finally {
-        //     setIsSubmitting(false);
-        // }
     };
 
     return (
@@ -176,11 +168,38 @@ export default function VerificationSummary() {
                         ID DOCUMENTS
                     </Text>
 
-                    <View className="space-y-3 mb-8">
+                    <View className="space-y-3 mb-4">
+                        {idDocuments.idType ? (
+                            <InfoItem icon="id-card-outline" label={`ID Type: ${idDocuments.idType}`} />
+                        ) : null}
+                    </View>
+
+                    <View className="space-y-3 mb-4">
                         <DocPreview label="ID Front" uri={idDocuments.frontUri} />
                         <DocPreview label="ID Back" uri={idDocuments.backUri} />
                         <DocPreview label="E-Signature" uri={idDocuments.signatureUri} />
                     </View>
+
+                    {/* Optional Documents Section */}
+                    {(idDocuments.proofOfIncomeUri || idDocuments.proofOfAddressUri) && (
+                        <>
+                            <Text className="text-base font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+                                OPTIONAL DOCUMENTS
+                            </Text>
+                            <View className="space-y-3 mb-8">
+                                {idDocuments.proofOfIncomeUri && (
+                                    <DocPreview label="Proof of Income" uri={idDocuments.proofOfIncomeUri} />
+                                )}
+                                {idDocuments.proofOfAddressUri && (
+                                    <DocPreview label="Proof of Address" uri={idDocuments.proofOfAddressUri} />
+                                )}
+                            </View>
+                        </>
+                    )}
+
+                    {!idDocuments.proofOfIncomeUri && !idDocuments.proofOfAddressUri && (
+                        <View className="mb-8" />
+                    )}
                 </View>
             </ScrollView>
 
@@ -191,7 +210,7 @@ export default function VerificationSummary() {
             >
                 {/* Progress Dots */}
                 <View className="px-6 pt-4 pb-3">
-                    <ProgressDots currentStep={3} totalSteps={4} />
+                    <ProgressDots currentStep={3} totalSteps={3} />
                 </View>
 
                 {/* Action Buttons */}

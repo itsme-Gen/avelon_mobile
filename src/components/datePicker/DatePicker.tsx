@@ -3,15 +3,21 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from "reac
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 
+const MIN_AGE = 18;
+
 interface DatePickerProps {
   value: string;
   onSelect: (date: string) => void;
+  errorMessage?: string;
 }
 
-export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
+export const DatePicker = ({ value, onSelect, errorMessage }: DatePickerProps) => {
+  const today = new Date();
+  const maxYear = today.getFullYear() - MIN_AGE;
+
   const [isOpen, setIsOpen] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(maxYear);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isYearListOpen, setIsYearListOpen] = useState(false);
 
@@ -20,16 +26,15 @@ export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Precompute a scrollable list of years (last 120 years)
+  // Precompute a scrollable list of years (from maxYear going back 100 years)
   const yearOptions = useMemo(() => {
-    const thisYear = new Date().getFullYear();
-    const startYear = thisYear - 120;
+    const startYear = maxYear - 100;
     const list: number[] = [];
-    for (let y = thisYear; y >= startYear; y--) {
+    for (let y = maxYear; y >= startYear; y--) {
       list.push(y);
     }
     return list;
-  }, []);
+  }, [maxYear]);
 
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -55,6 +60,13 @@ export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
     return days;
   };
 
+  // Check if a specific day is selectable (must be at least 18 years old)
+  const isDayDisabled = (day: number) => {
+    const selectedDate = new Date(currentYear, currentMonth, day);
+    const cutoff = new Date(today.getFullYear() - MIN_AGE, today.getMonth(), today.getDate());
+    return selectedDate > cutoff;
+  };
+
   const handlePreviousMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
@@ -67,18 +79,22 @@ export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
   };
 
   const handleNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
+    const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+    const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    // Prevent navigating past the max allowed year/month
+    if (nextYear > maxYear || (nextYear === maxYear && nextMonth > today.getMonth())) {
+      return;
     }
+    setCurrentMonth(nextMonth);
+    setCurrentYear(nextYear);
     setSelectedDay(null);
     setIsYearListOpen(false);
   };
 
   const handleYearChange = (increment: number) => {
-    setCurrentYear(currentYear + increment);
+    const newYear = currentYear + increment;
+    if (newYear > maxYear || newYear < maxYear - 100) return;
+    setCurrentYear(newYear);
     setSelectedDay(null);
     setIsYearListOpen(false);
   };
@@ -103,13 +119,18 @@ export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
     <View>
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
-        className="border border-gray-300 rounded-full px-6 py-4 flex-row items-center justify-between"
+        className={`border rounded-full px-6 py-4 flex-row items-center justify-between ${
+          errorMessage ? "border-red-400" : "border-gray-300"
+        }`}
       >
         <Text className={`text-base ${value ? "text-black" : "text-gray-400"}`}>
           {value || "Date of Birth"}
         </Text>
         <Ionicons name="calendar-outline" size={20} color="#9CA3AF" />
       </TouchableOpacity>
+      {errorMessage && (
+        <Text className="text-red-500 text-sm mt-1 ml-2">{errorMessage}</Text>
+      )}
 
       <Modal visible={isOpen} transparent animationType="fade">
         <Pressable
@@ -225,30 +246,40 @@ export const DatePicker = ({ value, onSelect }: DatePickerProps) => {
                   </View>
 
                   <View className="flex-row flex-wrap">
-                    {calendarDays.map((day, index) => (
-                      <View key={index} className="w-[14.28%] aspect-square p-0.5">
-                        {day ? (
-                          <TouchableOpacity
-                            onPress={() => handleDaySelect(day)}
-                            className={`flex-1 items-center justify-center rounded-lg ${
-                              selectedDay === day ? "bg-black" : "bg-transparent"
-                            }`}
-                          >
-                            <Text
-                              className={`text-base ${
+                    {calendarDays.map((day, index) => {
+                      const disabled = day ? isDayDisabled(day) : false;
+                      return (
+                        <View key={index} className="w-[14.28%] aspect-square p-0.5">
+                          {day ? (
+                            <TouchableOpacity
+                              onPress={() => !disabled && handleDaySelect(day)}
+                              disabled={disabled}
+                              className={`flex-1 items-center justify-center rounded-lg ${
                                 selectedDay === day
-                                  ? "text-white font-semibold"
-                                  : "text-black"
+                                  ? "bg-black"
+                                  : disabled
+                                    ? "bg-transparent opacity-30"
+                                    : "bg-transparent"
                               }`}
                             >
-                              {day}
-                            </Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <View className="flex-1" />
-                        )}
-                      </View>
-                    ))}
+                              <Text
+                                className={`text-base ${
+                                  selectedDay === day
+                                    ? "text-white font-semibold"
+                                    : disabled
+                                      ? "text-gray-300"
+                                      : "text-black"
+                                }`}
+                              >
+                                {day}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <View className="flex-1" />
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
 

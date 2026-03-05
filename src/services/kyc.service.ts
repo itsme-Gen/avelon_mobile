@@ -131,7 +131,7 @@ export async function getKycProfile(): Promise<{ success: boolean; data?: KycPro
  */
 export async function uploadDocument(
     imageUri: string,
-    documentType: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE',
+    documentType: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE' | 'PROOF_OF_INCOME' | 'PROOF_OF_ADDRESS',
 ): Promise<{ success: boolean; data?: DocumentUploadResponse['data']; error?: string }> {
     try {
         const headers = await authHeaders();
