@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
 import {
+  ActivityIndicator,
   Dimensions,
   ScrollView,
   Text,
@@ -12,6 +13,12 @@ import {
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert } from "../../components/alertbutton/CustomAlert";
+import * as loanService from "@/services/loan.service";
+import * as marketService from "@/services/market.service";
+import * as walletService from "@/services/wallet.service";
+import type { LoanPlan } from "@/services/loan.service";
+import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
+import type { WalletBalance } from "@/services/wallet.service";
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get("window").width;
@@ -19,6 +26,9 @@ export default function HomeScreen() {
   const TAB_BAR_HEIGHT = 84; // buffer to clear bottom tab bar
   const [showVerification, setShowVerification] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
+  const kycStatus = useVerificationStore((state) => state.kycStatus);
+  const checkKycStatus = useVerificationStore((state) => state.checkKycStatus);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [alert, setAlert] = useState<{
     visible: boolean;
     title: string;
@@ -37,11 +47,113 @@ export default function HomeScreen() {
   });
   const router = useRouter();
 
+  const [loanPlans, setLoanPlans] = useState<LoanPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
+  const [selectedDays, setSelectedDays] = useState(7);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+
+  const fetchPlans = useCallback(async () => {
+    setPlansLoading(true);
+    try {
+      const result = await loanService.getLoanPlans();
+      if (result.success && result.data) {
+        setLoanPlans(result.data.slice(0, 2));
+      }
+    } catch (error) {
+      console.error('[Home] Fetch plans error:', error);
+    } finally {
+      setPlansLoading(false);
+    }
+  }, []);
+
+  const fetchMarketData = useCallback(async (days: number) => {
+    try {
+      const [priceResult, historyResult] = await Promise.all([
+        marketService.getPrice(),
+        marketService.getPriceHistory(days),
+      ]);
+      if (priceResult.success && priceResult.data) {
+        setPriceData(priceResult.data);
+      }
+      if (historyResult.success && historyResult.data) {
+        setPriceHistory(historyResult.data);
+      }
+    } catch (error) {
+      console.error('[Home] Fetch market error:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMarketData(selectedDays);
+  }, [selectedDays, fetchMarketData]);
+
+  useEffect(() => {
+    if (isVerified) {
+      fetchPlans();
+      walletService.getBalances().then((res) => {
+        if (res.success && res.data && res.data.length > 0) {
+          const primary = res.data.find((w) => w.isPrimary) || res.data[0];
+          setWalletBalance(primary);
+        }
+      }).catch(() => {});
+    }
+  }, [isVerified, fetchPlans]);
+
+  // Poll KYC status every 5s while PENDING_KYC
+  useEffect(() => {
+    if (kycStatus === 'PENDING_KYC') {
+      checkKycStatus();
+      pollRef.current = setInterval(() => {
+        checkKycStatus();
+      }, 5000);
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [kycStatus, checkKycStatus]);
+
+  const TIME_OPTIONS = [
+    { label: "1D", days: 1 },
+    { label: "1W", days: 7 },
+    { label: "1M", days: 30 },
+    { label: "3M", days: 90 },
+    { label: "1Y", days: 365 },
+  ];
+
+  // Build chart data from API history
+  const chartPoints = priceHistory.length > 0
+    ? priceHistory.map((p) => p.ethPricePHP)
+    : [0];
+
+  // Sample labels from history timestamps (show ~5 labels max)
+  const labelStep = Math.max(1, Math.floor(priceHistory.length / 5));
+  const chartLabels = priceHistory.length > 0
+    ? priceHistory
+        .filter((_, i) => i % labelStep === 0)
+        .map((p) => {
+          const d = new Date(p.createdAt);
+          return selectedDays <= 1
+            ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : `${d.getMonth() + 1}/${d.getDate()}`;
+        })
+    : ["--"];
+
+  // Pad if labels/data mismatch for chart library
+  const sampledData = priceHistory.length > 0
+    ? priceHistory.filter((_, i) => i % labelStep === 0).map((p) => p.ethPricePHP)
+    : [0];
+
   const chartData = {
-    labels: ["1h", "6h", "12h", "1D", "1W", "1M", "3M", "1Y", "5Y", "ALL"],
+    labels: chartLabels,
     datasets: [
       {
-        data: [2800, 3200, 2900, 3500, 3100, 3800, 3400, 3000, 2700, 3200],
+        data: sampledData.length > 0 ? sampledData : [0],
         color: (opacity = 1) => `rgba(255, 140, 66, 1)`,
         strokeWidth: 3,
       },
@@ -93,24 +205,65 @@ export default function HomeScreen() {
     router.push("/LoanPlans");
   };
 
-  const renderVerifyBanner = !isVerified ? (
-    <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
-      <View className="flex-1 mr-3">
-        <Text className="text-base font-semibold text-gray-900">
-          Verify your account
-        </Text>
-        <Text className="text-sm text-gray-600 mt-1">
-          Verify your account now to see details.
-        </Text>
+  const renderVerifyBanner = (() => {
+    if (isVerified) return null;
+
+    if (kycStatus === 'PENDING_KYC') {
+      return (
+        <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex-row items-center">
+          <ActivityIndicator size="small" color="#D97706" style={{ marginRight: 12 }} />
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-amber-900">
+              Verification in progress
+            </Text>
+            <Text className="text-sm text-amber-700 mt-1">
+              We're reviewing your documents. This usually takes a few minutes.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (kycStatus === 'REJECTED') {
+      return (
+        <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-red-900">
+              Verification rejected
+            </Text>
+            <Text className="text-sm text-red-700 mt-1">
+              Please re-submit your documents with the correct information.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowVerification(true)}
+            className="bg-red-600 px-4 py-2 rounded-full"
+          >
+            <Text className="text-white font-semibold text-sm">Re-verify</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
+        <View className="flex-1 mr-3">
+          <Text className="text-base font-semibold text-gray-900">
+            Verify your account
+          </Text>
+          <Text className="text-sm text-gray-600 mt-1">
+            Verify your account now to see details.
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setShowVerification(true)}
+          className="bg-black px-4 py-2 rounded-full"
+        >
+          <Text className="text-white font-semibold text-sm">Verify</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => setShowVerification(true)}
-        className="bg-black px-4 py-2 rounded-full"
-      >
-        <Text className="text-white font-semibold text-sm">Verify</Text>
-      </TouchableOpacity>
-    </View>
-  ) : null;
+    );
+  })();
 
   const closeAlert = () =>
     setAlert((prev) => ({
@@ -217,7 +370,9 @@ export default function HomeScreen() {
               </View>
               <Text className="text-sm text-gray-500 mb-1">Balance</Text>
               <Text className="text-base font-bold text-gray-900">
-                0.05245412 ETH
+                {walletBalance?.balance
+                  ? `${parseFloat(walletBalance.balance).toFixed(6)} ETH`
+                  : "-- ETH"}
               </Text>
             </View>
 
@@ -240,9 +395,24 @@ export default function HomeScreen() {
 
           {/* Chart Section */}
           <View className="bg-white rounded-2xl mb-6">
-            <Text className="text-base font-semibold text-gray-900 mb-3">
-              ETH Price Volatility Prediction
+            <Text className="text-base font-semibold text-gray-900 mb-1">
+              ETH/PHP Price
             </Text>
+            {priceData && (
+              <View className="flex-row items-center mb-3">
+                <Text className="text-lg font-bold text-gray-900 mr-2">
+                  ₱{priceData.ethPricePHP.toLocaleString()}
+                </Text>
+                <Text
+                  className={`text-xs font-medium ${
+                    priceData.changePercent24h >= 0 ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {priceData.changePercent24h >= 0 ? "+" : ""}
+                  {priceData.changePercent24h.toFixed(2)}%
+                </Text>
+              </View>
+            )}
 
             <LineChart
               data={chartData}
@@ -263,12 +433,25 @@ export default function HomeScreen() {
               segments={4}
             />
 
-            {/* Current Value Indicator */}
-            <View className="flex-row items-center justify-center mt-2">
-              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-              <Text className="text-xs text-gray-600">
-                Current Value: Full ($3216%)
-              </Text>
+            {/* Time Period Selector */}
+            <View className="flex-row justify-around mt-3">
+              {TIME_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.days}
+                  onPress={() => setSelectedDays(opt.days)}
+                  className={`px-3 py-1.5 rounded-full ${
+                    selectedDays === opt.days ? "bg-gray-900" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-medium ${
+                      selectedDays === opt.days ? "text-white" : "text-gray-500"
+                    }`}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -286,67 +469,51 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Loan Card 1 - Starting Loan */}
-              <TouchableOpacity
-                className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
-                activeOpacity={0.9}
-                onPress={() =>
-                  router.push({
-                    pathname: "/loan-application",
-                    params: {
-                      title: "Starting Loan Plan",
-                      amount: "0.00001452 ETH",
-                    },
-                  })
-                }
-              >
-                <View className="w-1 h-16 bg-green-500 rounded-full mr-4" />
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900 mb-1">
-                    Starting Loan Plan
-                  </Text>
-                  <Text className="text-xs text-gray-500 mb-2">
-                    APR: 5% / 12 months
-                  </Text>
-                  <Text className="text-lg font-bold text-gray-900">
-                    0.00001452 ETH
-                  </Text>
+              {plansLoading ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="small" color="#1F2937" />
                 </View>
-                <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+              ) : loanPlans.length > 0 ? (
+                loanPlans.map((plan, index) => (
+                  <TouchableOpacity
+                    key={plan.id}
+                    className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/loan-application",
+                        params: {
+                          planId: plan.id,
+                          title: plan.name,
+                          amount: `${plan.maxAmount} ETH`,
+                          interest: `${plan.interestRate}%`,
+                          duration: String(plan.durationOptions[0] || 30),
+                        },
+                      })
+                    }
+                  >
+                    <View className={`w-1 h-16 ${index === 0 ? 'bg-green-500' : 'bg-red-500'} rounded-full mr-4`} />
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold text-gray-900 mb-1">
+                        {plan.name}
+                      </Text>
+                      <Text className="text-xs text-gray-500 mb-2">
+                        APR: {plan.interestRate}% / {plan.durationOptions[0]} days
+                      </Text>
+                      <Text className="text-lg font-bold text-gray-900">
+                        {plan.maxAmount} ETH
+                      </Text>
+                    </View>
+                    <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
+                      <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View className="bg-gray-50 rounded-2xl p-4 items-center">
+                  <Text className="text-sm text-gray-500">No plans available</Text>
                 </View>
-              </TouchableOpacity>
-
-              {/* Loan Card 2 - Beginner Loan */}
-              <TouchableOpacity
-                className="bg-gray-50 rounded-2xl p-4 flex-row items-center"
-                activeOpacity={0.9}
-                onPress={() =>
-                  router.push({
-                    pathname: "/loan-application",
-                    params: {
-                      title: "Beginner Loan",
-                      amount: "0.00062512 ETH",
-                    },
-                  })
-                }
-              >
-                <View className="w-1 h-16 bg-red-500 rounded-full mr-4" />
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900 mb-1">
-                    Beginner Loan
-                  </Text>
-                  <Text className="text-xs text-gray-500 mb-2">
-                    APR: 7% / 6 months
-                  </Text>
-                  <Text className="text-lg font-bold text-gray-900">
-                    0.00062512 ETH
-                  </Text>
-                </View>
-                <View className="w-10 h-10 rounded-full bg-gray-900 justify-center items-center">
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                </View>
-              </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
