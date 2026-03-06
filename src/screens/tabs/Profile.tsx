@@ -9,6 +9,10 @@ import ProfileSettings from "../../screens/settings/ProfileSettings"
 import NotificationsScreen from "../../screens/settings/NotificationsScreen"
 import LoanHistoryScreen from "../../screens/settings/LoanHistoryScreen"
 import EditProfileScreen from "../../screens/settings/EditProfileScreen"
+import ChangePasswordScreen from "../../screens/settings/ChangePasswordScreen"
+import SupportScreen from "../../screens/settings/SupportScreen"
+import FAQsScreen from "../../screens/settings/FAQsScreen"
+import LegalScreen from "../../screens/settings/LegalScreen"
 
 
 
@@ -17,6 +21,10 @@ export default function Profile() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLoanHistory, setShowLoanHistory] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
+  const [showFAQs, setShowFAQs] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
   const { isVerified } = useVerificationStore();
   const { user } = useAuthStore();
   const router = useRouter();
@@ -50,6 +58,22 @@ export default function Profile() {
 
   if (showEditProfile) {
     return <EditProfileScreen onBack={() => setShowEditProfile(false)} />;
+  }
+
+  if (showChangePassword) {
+    return <ChangePasswordScreen onBack={() => setShowChangePassword(false)} />;
+  }
+
+  if (showSupport) {
+    return <SupportScreen onBack={() => setShowSupport(false)} />;
+  }
+
+  if (showFAQs) {
+    return <FAQsScreen onBack={() => setShowFAQs(false)} />;
+  }
+
+  if (showLegal) {
+    return <LegalScreen onBack={() => setShowLegal(false)} />;
   }
 
   if (showVerification) {
@@ -143,7 +167,15 @@ export default function Profile() {
         {renderVerifyBanner}
 
         {/* Profile Settings always visible */}
-        <ProfileSettings onOpenNotifications={() => setShowNotifications(true)} onOpenLoanHistory={() => setShowLoanHistory(true)} />
+        <ProfileSettings
+          onOpenNotifications={() => setShowNotifications(true)}
+          onOpenLoanHistory={() => setShowLoanHistory(true)}
+          onOpenChangePassword={() => setShowChangePassword(true)}
+          onOpenEditProfile={() => setShowEditProfile(true)}
+          onOpenSupport={() => setShowSupport(true)}
+          onOpenFAQs={() => setShowFAQs(true)}
+          onOpenLegal={() => setShowLegal(true)}
+        />
 
         {/* Bottom Navigation */}
         <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">

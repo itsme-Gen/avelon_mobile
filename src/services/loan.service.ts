@@ -33,13 +33,16 @@ export interface Loan {
     userId: string;
     planId: string;
     walletId: string;
-    amount: string;
+    principal: string;
+    collateralRequired: string;
+    collateralDeposited: string;
     duration: number;
     interestRate: number;
-    collateralRequired: string;
     status: string;
+    dueDate: string | null;
     createdAt: string;
-    updatedAt: string;
+    plan: { name: string };
+    wallet: { address: string };
 }
 
 export interface LoanApplicationData {

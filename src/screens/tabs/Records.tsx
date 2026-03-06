@@ -1,8 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
+import * as loanService from "@/services/loan.service";
+import type { Loan } from "@/services/loan.service";
 import {
+  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +16,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PagerView, type PagerViewOnPageSelectedEvent } from "@/components/PagerViewWrapper";
 
+const STATUS_COLORS: Record<string, string> = {
+  PENDING_COLLATERAL: "bg-yellow-400",
+  COLLATERAL_DEPOSITED: "bg-blue-400",
+  ACTIVE: "bg-green-500",
+  REPAID: "bg-gray-400",
+  LIQUIDATED: "bg-red-500",
+  CANCELLED: "bg-gray-300",
+  EXPIRED: "bg-orange-400",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING_COLLATERAL: "Pending Collateral",
+  COLLATERAL_DEPOSITED: "Collateral Deposited",
+  ACTIVE: "Active",
+  REPAID: "Repaid",
+  LIQUIDATED: "Liquidated",
+  CANCELLED: "Cancelled",
+  EXPIRED: "Expired",
+};
+
 export default function DocumentsScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<any>(null);
@@ -19,85 +43,41 @@ export default function DocumentsScreen() {
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
 
-  const loanHistory = [
-    {
-      id: 1,
-      title: "Beginner Loan",
-      subtitle: "Borrow date: 12/01/2025",
-      amount: "0.00062512 ETH",
-      color: "bg-red-500",
-    },
-    {
-      id: 2,
-      title: "Starting Loan Plan",
-      subtitle: "Borrow date: 11/15/2024",
-      amount: "0.00001452 ETH",
-      color: "bg-gray-400",
-    },
-  ];
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const paymentHistory = [
-    {
-      id: 1,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Jan 15",
-    },
-    {
-      id: 2,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Dec 15",
-    },
-    {
-      id: 3,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Nov 15",
-    },
-    {
-      id: 4,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Oct 15",
-    },
-    {
-      id: 5,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Sep 15",
-    },
-    {
-      id: 6,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Aug 15",
-    },
-    {
-      id: 7,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Jul 15",
-    },
-    {
-      id: 8,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Jun 15",
-    },
-    {
-      id: 9,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "May 15",
-    },
-    {
-      id: 10,
-      title: "Monthly Payment",
-      subtitle: "Amount: 0.00054312 ETH",
-      date: "Apr 15",
-    },
-  ];
+  const fetchLoans = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const result = await loanService.getLoans();
+      if (result.success && result.data) {
+        setLoans(result.data);
+      }
+    } catch (error) {
+      console.error("[Records] Fetch loans error:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isVerified) fetchLoans();
+  }, [isVerified, fetchLoans]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchLoans(true);
+  };
+
+  // Split loans into active and completed for each tab
+  const activeLoans = loans.filter(
+    (l) => !["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status)
+  );
+  const completedLoans = loans.filter((l) =>
+    ["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status)
+  );
 
   const handleTabPress = (index: number) => {
     setActiveTab(index);
@@ -210,7 +190,7 @@ export default function DocumentsScreen() {
                 activeTab === 1 ? "text-gray-900" : "text-gray-500"
               }`}
             >
-              Payment History
+              Completed
             </Text>
           </TouchableOpacity>
         </View>
@@ -225,62 +205,115 @@ export default function DocumentsScreen() {
             initialPage={0}
             onPageSelected={handlePageSelected}
           >
+            {/* Active Loans */}
             <View key="1" style={styles.page}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
-              >
-                <View className="px-5">
-                  {loanHistory.map((loan) => (
-                    <TouchableOpacity
-                      key={loan.id}
-                      className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
-                    >
-                      <View className={`w-1 h-16 ${loan.color} rounded-full mr-4`} />
-                      <View className="flex-1">
-                        <Text className="text-base font-semibold text-gray-900 mb-1">
-                          {loan.title}
-                        </Text>
-                        <Text className="text-xs text-gray-500 mb-2">
-                          {loan.subtitle}
-                        </Text>
-                        <Text className="text-lg font-bold text-gray-900">
-                          {loan.amount}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+              {isLoading ? (
+                <View className="flex-1 items-center justify-center">
+                  <ActivityIndicator size="large" color="#1F2937" />
                 </View>
-              </ScrollView>
+              ) : activeLoans.length === 0 ? (
+                <View className="flex-1 items-center justify-center px-8">
+                  <Ionicons name="document-text-outline" size={48} color="#D1D5DB" />
+                  <Text className="text-sm text-gray-400 mt-3 text-center">
+                    No active loans
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={isRefreshing}
+                      onRefresh={handleRefresh}
+                      tintColor="#1F2937"
+                    />
+                  }
+                >
+                  <View className="px-5">
+                    {activeLoans.map((loan) => (
+                      <TouchableOpacity
+                        key={loan.id}
+                        className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
+                      >
+                        <View className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`} />
+                        <View className="flex-1">
+                          <Text className="text-base font-semibold text-gray-900 mb-1">
+                            {loan.plan?.name ?? "Loan"}
+                          </Text>
+                          <Text className="text-xs text-gray-500 mb-1">
+                            {STATUS_LABELS[loan.status] ?? loan.status} · {new Date(loan.createdAt).toLocaleDateString()}
+                          </Text>
+                          <Text className="text-lg font-bold text-gray-900">
+                            {loan.principal} ETH
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
+            {/* Loan History (completed) */}
             <View key="2" style={styles.page}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
-              >
-                <View className="px-5">
-                  {paymentHistory.map((payment) => (
-                    <TouchableOpacity
-                      key={payment.id}
-                      className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
-                    >
-                      <View className="w-10 h-10 bg-green-100 rounded-full mr-3 justify-center items-center">
-                        <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-base font-semibold text-gray-900 mb-1">
-                          {payment.title}
-                        </Text>
-                        <Text className="text-xs text-gray-400">
-                          {payment.subtitle}
-                        </Text>
-                      </View>
-                      <Text className="text-sm text-gray-500">{payment.date}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {isLoading ? (
+                <View className="flex-1 items-center justify-center">
+                  <ActivityIndicator size="large" color="#1F2937" />
                 </View>
-              </ScrollView>
+              ) : completedLoans.length === 0 ? (
+                <View className="flex-1 items-center justify-center px-8">
+                  <Ionicons name="time-outline" size={48} color="#D1D5DB" />
+                  <Text className="text-sm text-gray-400 mt-3 text-center">
+                    No completed loans yet
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={isRefreshing}
+                      onRefresh={handleRefresh}
+                      tintColor="#1F2937"
+                    />
+                  }
+                >
+                  <View className="px-5">
+                    {completedLoans.map((loan) => {
+                      const isRepaid = loan.status === "REPAID";
+                      return (
+                        <TouchableOpacity
+                          key={loan.id}
+                          className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
+                        >
+                          <View className="w-10 h-10 rounded-full mr-3 justify-center items-center"
+                            style={{ backgroundColor: isRepaid ? "#D1FAE5" : "#FEE2E2" }}
+                          >
+                            <Ionicons
+                              name={isRepaid ? "checkmark-circle" : "close-circle"}
+                              size={24}
+                              color={isRepaid ? "#10B981" : "#EF4444"}
+                            />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-base font-semibold text-gray-900 mb-1">
+                              {loan.plan?.name ?? "Loan"}
+                            </Text>
+                            <Text className="text-xs text-gray-400">
+                              {loan.principal} ETH · {STATUS_LABELS[loan.status] ?? loan.status}
+                            </Text>
+                          </View>
+                          <Text className="text-sm text-gray-500">
+                            {new Date(loan.createdAt).toLocaleDateString()}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
           </PagerView>
         </>

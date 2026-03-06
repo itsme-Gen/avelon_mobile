@@ -66,7 +66,7 @@ export default function LoanHistoryScreen({ onBack }: LoanHistoryScreenProps) {
             <View className="mx-4 mb-3 bg-white rounded-2xl p-4">
                 <View className="flex-row items-center justify-between mb-2">
                     <Text className="text-base font-semibold text-gray-900">
-                        {item.amount} ETH
+                        {item.plan?.name ?? "Loan"}
                     </Text>
                     <View className={`px-2.5 py-1 rounded-full ${style.bg}`}>
                         <Text className={`text-xs font-medium ${style.text}`}>
@@ -74,6 +74,9 @@ export default function LoanHistoryScreen({ onBack }: LoanHistoryScreenProps) {
                         </Text>
                     </View>
                 </View>
+                <Text className="text-sm font-bold text-gray-900 mb-1">
+                    {item.principal} ETH
+                </Text>
                 <View className="flex-row justify-between">
                     <Text className="text-xs text-gray-500">
                         Duration: {item.duration} days

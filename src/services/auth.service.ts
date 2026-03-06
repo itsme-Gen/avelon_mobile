@@ -158,6 +158,20 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
 }
 
 /**
+ * Change password (authenticated)
+ * Calls: POST /api/v1/auth/change-password
+ */
+export async function changePassword(
+    currentPassword: string,
+    newPassword: string
+): Promise<{ success: boolean; message: string }> {
+    return apiRequest('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+}
+
+/**
  * Reset password with token
  * Calls: POST /api/v1/auth/reset-password
  */

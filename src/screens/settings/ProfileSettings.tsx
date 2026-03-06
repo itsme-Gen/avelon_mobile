@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, TouchableOpacity } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { logout } from "@/services/auth.service";
 import { useState } from "react";
@@ -16,6 +16,11 @@ interface ProfileSettingsProps {
   onResetVerification?: () => void;
   onOpenNotifications?: () => void;
   onOpenLoanHistory?: () => void;
+  onOpenChangePassword?: () => void;
+  onOpenEditProfile?: () => void;
+  onOpenSupport?: () => void;
+  onOpenFAQs?: () => void;
+  onOpenLegal?: () => void;
 }
 
 function SettingsItem({ 
@@ -39,7 +44,7 @@ function SettingsItem({
   );
 }
 
-export default function ProfileSettings({ onResetVerification, onOpenNotifications, onOpenLoanHistory }: ProfileSettingsProps) {
+export default function ProfileSettings({ onResetVerification, onOpenNotifications, onOpenLoanHistory, onOpenChangePassword, onOpenEditProfile, onOpenSupport, onOpenFAQs, onOpenLegal }: ProfileSettingsProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
 
@@ -75,22 +80,22 @@ export default function ProfileSettings({ onResetVerification, onOpenNotificatio
             <SettingsItem 
               icon="lock-closed-outline" 
               label="Change Password" 
-              onPress={() => {}}
+              onPress={() => onOpenChangePassword?.()}
             />
             <SettingsItem 
               icon="call-outline" 
               label="Change Phone Number" 
-              onPress={() => {}}
+              onPress={() => onOpenEditProfile?.()}
               showBorder
             />
             <SettingsItem 
               icon="keypad-outline" 
               label="Add Pin" 
-              onPress={() => {}}
+              onPress={() => Alert.alert("Coming Soon", "PIN setup will be available in a future update.")}
               showBorder
             />
             <TouchableOpacity 
-              onPress={() => setBiometricsEnabled(!biometricsEnabled)}
+              onPress={() => Alert.alert("Coming Soon", "Biometric authentication will be available in a future update.")}
               className="flex-row items-center justify-between px-4 py-3.5 border-t border-gray-100"
             >
               <View className="flex-row items-center gap-3">
@@ -129,18 +134,18 @@ export default function ProfileSettings({ onResetVerification, onOpenNotificatio
             <SettingsItem 
               icon="chatbubble-ellipses-outline" 
               label="Avalon Support" 
-              onPress={() => {}}
+              onPress={() => onOpenSupport?.()}
             />
             <SettingsItem 
               icon="help-circle-outline" 
               label="FAQs" 
-              onPress={() => {}}
+              onPress={() => onOpenFAQs?.()}
               showBorder
             />
             <SettingsItem 
               icon="document-text-outline" 
               label="Legal Information" 
-              onPress={() => {}}
+              onPress={() => onOpenLegal?.()}
               showBorder
             />
             <TouchableOpacity 
