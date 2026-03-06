@@ -85,9 +85,12 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
  */
 export async function submitKycProfile(data: KycProfileData): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/kyc/profile`, {
+        const headers = await authJsonHeaders();
+        const url = `${API_BASE_URL}/kyc/profile`;
+
+        const response = await fetch(url, {
             method: 'POST',
-            headers: await authJsonHeaders(),
+            headers,
             body: JSON.stringify(data),
         });
 

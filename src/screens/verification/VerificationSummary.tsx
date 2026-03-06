@@ -98,6 +98,39 @@ export default function VerificationSummary() {
                 return;
             }
 
+            // Step 4: Poll KYC status — AI verification runs async on backend
+            let finalStatus = 'PENDING_KYC';
+            let rejectionReason = '';
+            for (let i = 0; i < 15; i++) {
+                await new Promise((r) => setTimeout(r, 2000));
+                const statusResult = await kycService.getKycStatus();
+                if (statusResult.success && statusResult.data) {
+                    const s = statusResult.data.status;
+                    if (s === 'APPROVED' || s === 'CONNECTED') {
+                        finalStatus = 'APPROVED';
+                        break;
+                    }
+                    if (s === 'REJECTED') {
+                        finalStatus = 'REJECTED';
+                        rejectionReason = statusResult.data.rejectionReason || 'Verification failed.';
+                        break;
+                    }
+                }
+            }
+
+            if (finalStatus === 'REJECTED') {
+                setAlert({
+                    visible: true,
+                    title: 'Verification Failed',
+                    message: rejectionReason,
+                    icon: 'close-circle-outline',
+                    iconColor: '#EF4444',
+                    buttons: [{ text: 'OK', onPress: () => router.replace('/(tabs)/Home' as any) }],
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             // Success — navigate to success screen
             router.push("/(verification)/Success" as any);
         } catch (error) {

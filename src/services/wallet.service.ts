@@ -1,9 +1,8 @@
-import * as SecureStore from "expo-secure-store";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
+import { API_BASE_URL } from '@/config';
+import { getAccessToken } from '@/utils/storage';
 
 async function authHeaders(): Promise<HeadersInit> {
-    const token = await SecureStore.getItemAsync("token");
+    const token = await getAccessToken();
     return {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
