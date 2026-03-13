@@ -15,7 +15,7 @@ export interface User {
     name: string | null;
     role: string;
     status: string;
-    kycLevel?: number;
+    kycLevel?: string;
     creditScore?: number;
     creditTier?: string;
 }
