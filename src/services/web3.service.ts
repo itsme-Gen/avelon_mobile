@@ -1,6 +1,7 @@
 import 'react-native-get-random-values';
 import { WagmiAdapter } from '@reown/appkit-wagmi-react-native';
 import { createAppKit, useAppKit } from '@reown/appkit-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useAccount,
   useWriteContract,
@@ -40,6 +41,7 @@ createAppKit({
   adapters: [wagmiAdapter],
   networks: [sepolia] as any,
   defaultNetwork: sepolia as any,
+  storage: AsyncStorage,
 });
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
