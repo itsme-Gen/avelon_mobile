@@ -96,6 +96,24 @@ export async function verifyWallet(address: string, signature: string, message: 
     }
 }
 
+export async function connectAndVerify(address: string): Promise<{ success: boolean; data?: WalletInfo; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/wallets/connect-direct`, {
+            method: "POST",
+            headers: await authHeaders(),
+            body: JSON.stringify({ address: address.toLowerCase() }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || "Connection failed" };
+        }
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error("[Wallet] Connect & verify error:", error);
+        return { success: false, error: "Network error. Please try again." };
+    }
+}
+
 export async function removeWallet(walletId: string): Promise<{ success: boolean; error?: string }> {
     try {
         const response = await fetch(`${API_BASE_URL}/wallets/${encodeURIComponent(walletId)}`, {

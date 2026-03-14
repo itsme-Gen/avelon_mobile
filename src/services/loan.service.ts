@@ -33,13 +33,20 @@ export interface Loan {
     userId: string;
     planId: string;
     walletId: string;
+    contractLoanId: number | null;
     principal: string;
     collateralRequired: string;
     collateralDeposited: string;
+    originationFee: string;
+    principalOwed: string;
+    interestOwed: string;
+    feesOwed: string;
     duration: number;
     interestRate: number;
+    creditScoreSnapshot: number;
     status: string;
     dueDate: string | null;
+    repaidAt: string | null;
     createdAt: string;
     plan: { name: string };
     wallet: { address: string };
@@ -56,7 +63,7 @@ export interface Wallet {
     id: string;
     address: string;
     label: string;
-    isDefault: boolean;
+    isPrimary: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -183,6 +190,86 @@ export async function getWallets(): Promise<{ success: boolean; data?: Wallet[];
         return { success: true, data: result.data };
     } catch (error) {
         console.error('[Loan] Get wallets error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
+/**
+ * Confirm collateral deposit — backend verifies txHash on Sepolia and activates loan
+ */
+export async function depositCollateral(
+    loanId: string,
+    txHash: string
+): Promise<{ success: boolean; data?: { status: string; collateralDeposited: string }; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/collateral`, {
+            method: 'POST',
+            headers: await authJsonHeaders(),
+            body: JSON.stringify({ txHash }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to record collateral deposit' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Loan] Deposit collateral error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
+/**
+ * Confirm loan repayment — backend verifies txHash on Sepolia and records repayment
+ */
+export async function repayLoan(
+    loanId: string,
+    amount: string,
+    txHash: string
+): Promise<{ success: boolean; data?: { remainingOwed: string; isFullyRepaid: boolean }; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/repay`, {
+            method: 'POST',
+            headers: await authJsonHeaders(),
+            body: JSON.stringify({ amount, txHash }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to record repayment' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Loan] Repay loan error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
+/**
+ * Cancel a pending loan (only allowed in PENDING_COLLATERAL status)
+ */
+export async function cancelLoan(
+    loanId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/cancel`, {
+            method: 'POST',
+            headers: await authJsonHeaders(),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to cancel loan' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('[Loan] Cancel loan error:', error);
         return { success: false, error: 'Network error. Please try again.' };
     }
 }

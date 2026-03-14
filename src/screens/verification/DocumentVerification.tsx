@@ -33,13 +33,21 @@ export default function IDVerification() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(savedDocs.proofOfAddressUri);
   const [showIdTypePicker, setShowIdTypePicker] = useState(false);
 
+  // Aspect ratio matched to actual document dimensions
+  const getAspectRatio = (docType: string): [number, number] => {
+    if (docType === 'signature') return [4, 3];
+    if (docType === 'income' || docType === 'address') return [4, 3];
+    if (selectedIdType === 'Passport') return [3, 2];
+    return [8, 5]; // CR80 card standard (85.6×54mm) — fits most PH gov IDs
+  };
+
   const ID_TYPE_OPTIONS = [
     { label: 'Philippine Identification (PhilID)', value: 'PhilID' },
     { label: "Driver's License", value: 'Drivers License' },
     { label: 'Passport', value: 'Passport' },
     { label: 'SSS ID', value: 'SSS' },
     { label: 'UMID', value: 'UMID' },
-    { label: 'Voter's ID', value: 'Voters ID' },
+    { label: "Voter's ID", value: 'Voters ID' },
     { label: 'PRC ID', value: 'PRC' },
     { label: 'Postal ID', value: 'Postal ID' },
   ];
@@ -133,7 +141,7 @@ export default function IDVerification() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        aspect: type === 'signature' ? [4, 3] : [16, 9],
+        aspect: getAspectRatio(type),
         quality: 0.8,
       });
 
@@ -175,7 +183,7 @@ export default function IDVerification() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        aspect: type === 'signature' ? [4, 3] : [16, 9],
+        aspect: getAspectRatio(type),
         quality: 0.8,
       });
 

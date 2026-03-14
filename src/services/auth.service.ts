@@ -15,7 +15,7 @@ export interface User {
     name: string | null;
     role: string;
     status: string;
-    kycLevel?: number;
+    kycLevel?: string;
     creditScore?: number;
     creditTier?: string;
 }
@@ -33,8 +33,12 @@ export interface RegisterResponse {
     success: boolean;
     message: string;
     data: {
-        email: string;
-        verificationToken?: string;
+        user: {
+            id: string;
+            email: string;
+            name: string | null;
+            status: string;
+        };
     };
 }
 
@@ -132,18 +136,14 @@ export async function login(
  * Calls: POST /api/v1/auth/logout
  */
 export async function logout(): Promise<void> {
-    // try {
-    //     await apiRequest('/auth/logout', { method: 'POST' });
-    // } finally {
-    //     // Always clear local auth data
-    //     await clearAuthData();
-
-    //Uncomment above if you have a logout endpoint, otherwise just clear local data and navigate
-
-    // Navigate to login screen (temporary - adjust path as needed)
-    router.replace('/(auth)/signin');
-
-    //}
+    try {
+        await apiRequest('/auth/logout', { method: 'POST' });
+    } catch {
+        // Session may already be expired — proceed with local cleanup regardless
+    } finally {
+        await clearAuthData();
+        router.replace('/(auth)/signin');
+    }
 }
 
 /**
