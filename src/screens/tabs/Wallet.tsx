@@ -107,16 +107,18 @@ export default function WalletScreen() {
       return;
     }
     setIsConnecting(true);
-    const result = await walletService.connectWallet(trimmed);
+    const result = await walletService.connectAndVerify(trimmed);
     setIsConnecting(false);
     if (result.success) {
       setShowConnectModal(false);
       setAddressInput("");
+      fetchWalletData();
+      fetchMarketData();
       setAlert({
         visible: true,
-        title: "Wallet Registered",
-        message: "Your wallet address has been registered. Verify it via the web dashboard to complete connection.",
-        buttons: [{ text: "OK", onPress: () => fetchWalletData() }],
+        title: "Wallet Connected",
+        message: "Your wallet has been connected and verified successfully.",
+        buttons: [{ text: "OK" }],
         icon: "checkmark-circle",
         iconColor: "#10B981",
       });

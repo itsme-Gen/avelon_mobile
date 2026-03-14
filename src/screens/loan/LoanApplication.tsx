@@ -137,7 +137,7 @@ export default function LoanApplication() {
   const loanTitle = params.title || "Starting Loan Plan";
   const loanAmount = params.amount || "0.00001452 ETH";
   const interestRate = params.interest || "5%";
-  const duration = params.duration || "3 months";
+  const duration = params.duration || "30";
 
   const [purpose, setPurpose] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -197,8 +197,8 @@ export default function LoanApplication() {
 
       const walletId = walletResult.data[0].id;
 
-      // Parse duration to number (e.g., "3 months" -> 3)
-      const durationMonths = parseInt(duration, 10) || 3;
+      // Parse duration to number of days (e.g., "30" -> 30, passed from LoanPlans screen)
+      const durationDays = parseInt(duration, 10) || 30;
 
       // Parse amount - strip " ETH" suffix if present
       const amountValue = loanAmount.replace(/\s*ETH$/i, "").trim();
@@ -206,7 +206,7 @@ export default function LoanApplication() {
       const result = await loanService.applyForLoan({
         planId,
         amount: amountValue,
-        duration: durationMonths,
+        duration: durationDays,
         walletId,
       });
 

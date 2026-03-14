@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CustomAlert } from "../../components/alertbutton/CustomAlert";
 import * as loanService from "@/services/loan.service";
@@ -31,14 +31,15 @@ export default function LoanPlans() {
 
   const [plans, setPlans] = useState<LoanPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const PLAN_COLORS = [
     "bg-gray-400", "bg-red-500", "bg-blue-500",
     "bg-purple-500", "bg-orange-500", "bg-teal-500",
   ];
 
-  const fetchPlans = useCallback(async () => {
-    setIsLoading(true);
+  const fetchPlans = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const result = await loanService.getLoanPlans();
       if (result.success && result.data) {
@@ -48,8 +49,14 @@ export default function LoanPlans() {
       console.error('[LoanPlans] Fetch error:', error);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchPlans(true);
+  };
 
   useEffect(() => {
     if (isVerified) {
@@ -177,6 +184,9 @@ export default function LoanPlans() {
         className="flex-1 mt-5"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
       >
         {/* Content */}
         <View className="px-5">
