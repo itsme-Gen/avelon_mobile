@@ -1,22 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVerificationStore } from "@/stores/verification.store";
 import * as loanService from "@/services/loan.service";
 import type { Loan } from "@/services/loan.service";
 import {
-  useWalletConnection,
-  useDepositCollateral,
-  useRepayLoan,
-} from "@/services/web3.service";
-import {
   ActivityIndicator,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -54,34 +47,6 @@ export default function DocumentsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  type ActionType = 'deposit' | 'repay';
-  const [actionModal, setActionModal] = useState<{
-    visible: boolean;
-    type: ActionType;
-    loan: Loan | null;
-  }>({ visible: false, type: 'deposit', loan: null });
-  const [repayAmountInput, setRepayAmountInput] = useState('');
-  const [isActioning, setIsActioning] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const { open, isConnected } = useWalletConnection();
-
-  // Tracks whether the user tapped "Connect Wallet" so we can re-open the
-  // action modal automatically once WalletConnect finishes connecting.
-  const pendingConnectRef = useRef<{ type: ActionType; loan: Loan } | null>(null);
-
-  useEffect(() => {
-    if (isConnected && pendingConnectRef.current) {
-      const { type, loan } = pendingConnectRef.current;
-      pendingConnectRef.current = null;
-      setActionError(null);
-      setActionModal({ visible: true, type, loan });
-    }
-  }, [isConnected]);
-
-  const { deposit } = useDepositCollateral();
-  const { repay } = useRepayLoan();
-
   const fetchLoans = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
@@ -101,93 +66,9 @@ export default function DocumentsScreen() {
     if (isVerified) fetchLoans();
   }, [isVerified, fetchLoans]);
 
-  // Re-fetch silently whenever this tab comes back into focus
-  // (catches loans created on other screens without requiring a manual pull-to-refresh)
-  useFocusEffect(
-    useCallback(() => {
-      if (isVerified) fetchLoans(true);
-    }, [isVerified, fetchLoans])
-  );
-
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchLoans(true);
-  };
-
-  const handleOpenDeposit = (loan: Loan) => {
-    setActionError(null);
-    setActionModal({ visible: true, type: 'deposit', loan });
-  };
-
-  const handleOpenRepay = (loan: Loan) => {
-    setRepayAmountInput('');
-    setActionError(null);
-    setActionModal({ visible: true, type: 'repay', loan });
-  };
-
-  const handleCloseModal = () => {
-    pendingConnectRef.current = null;
-    setActionModal((prev) => ({ ...prev, visible: false }));
-  };
-
-  const handleConfirmAction = async () => {
-    const { type, loan } = actionModal;
-    if (!loan) return;
-
-    if (!isConnected) {
-      // Close the deposit/repay modal first — Android can't stack two native Modals.
-      // Once isConnected becomes true, the useEffect above re-opens this modal.
-      pendingConnectRef.current = { type, loan };
-      setActionModal({ visible: false, type, loan: null });
-      open();
-      return;
-    }
-
-    setIsActioning(true);
-    setActionError(null);
-
-    try {
-      if (type === 'deposit') {
-        if (loan.contractLoanId == null) {
-          setActionError('Loan not synced to blockchain yet. Please wait and try again.');
-          return;
-        }
-        const txHash = await deposit(loan.contractLoanId, loan.collateralRequired);
-        const result = await loanService.depositCollateral(loan.id, txHash);
-        if (result.success) {
-          setActionModal({ visible: false, type: 'deposit', loan: null });
-          fetchLoans(true);
-        } else {
-          setActionError(result.error ?? 'Failed to confirm deposit.');
-        }
-      } else {
-        if (!repayAmountInput.trim()) {
-          setActionError('Please enter the repayment amount.');
-          return;
-        }
-        const txHash = await repay(repayAmountInput.trim());
-        const result = await loanService.repayLoan(loan.id, repayAmountInput.trim(), txHash);
-        if (result.success) {
-          setActionModal({ visible: false, type: 'deposit', loan: null });
-          fetchLoans(true);
-        } else {
-          setActionError(result.error ?? 'Failed to confirm repayment.');
-        }
-      }
-    } catch (err: any) {
-      const msg: string = err?.message ?? '';
-      if (err?.code === 4001 || msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled')) {
-        setActionError('Transaction cancelled.');
-      } else if (msg.includes('insufficient')) {
-        setActionError('Insufficient funds in your wallet.');
-      } else if (msg.includes('switch') || msg.includes('chain')) {
-        setActionError('Please switch to Sepolia testnet and try again.');
-      } else {
-        setActionError(msg || 'Wallet transaction failed. Please try again.');
-      }
-    } finally {
-      setIsActioning(false);
-    }
   };
 
   // Split loans into active and completed for each tab
@@ -282,7 +163,6 @@ export default function DocumentsScreen() {
   }
 
   return (
-    <>
     <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
       {renderVerifyBanner}
 
@@ -352,48 +232,23 @@ export default function DocumentsScreen() {
                 >
                   <View className="px-5">
                     {activeLoans.map((loan) => (
-                      <View
+                      <TouchableOpacity
                         key={loan.id}
-                        className="bg-gray-50 rounded-2xl p-4 mb-3"
+                        className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
                       >
-                        <View className="flex-row items-center">
-                          <View className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`} />
-                          <View className="flex-1">
-                            <View className="flex-row items-center gap-2 mb-1">
-                              <Text className="text-base font-semibold text-gray-900">
-                                {loan.plan?.name ?? "Loan"}
-                              </Text>
-                              {loan.contractLoanId != null && (
-                                <View className="bg-orange-100 rounded px-1.5 py-0.5">
-                                  <Text className="text-orange-600 font-bold text-xs">#{loan.contractLoanId}</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text className="text-xs text-gray-500 mb-1">
-                              {STATUS_LABELS[loan.status] ?? loan.status} · {new Date(loan.createdAt).toLocaleDateString()}
-                            </Text>
-                            <Text className="text-lg font-bold text-gray-900">
-                              {loan.principal} ETH
-                            </Text>
-                          </View>
+                        <View className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`} />
+                        <View className="flex-1">
+                          <Text className="text-base font-semibold text-gray-900 mb-1">
+                            {loan.plan?.name ?? "Loan"}
+                          </Text>
+                          <Text className="text-xs text-gray-500 mb-1">
+                            {STATUS_LABELS[loan.status] ?? loan.status} · {new Date(loan.createdAt).toLocaleDateString()}
+                          </Text>
+                          <Text className="text-lg font-bold text-gray-900">
+                            {loan.principal} ETH
+                          </Text>
                         </View>
-                        {loan.status === "PENDING_COLLATERAL" && (
-                          <TouchableOpacity
-                            onPress={() => handleOpenDeposit(loan)}
-                            className="mt-3 bg-yellow-400 rounded-xl py-2 items-center"
-                          >
-                            <Text className="text-black font-semibold text-sm">Deposit Collateral</Text>
-                          </TouchableOpacity>
-                        )}
-                        {loan.status === "ACTIVE" && (
-                          <TouchableOpacity
-                            onPress={() => handleOpenRepay(loan)}
-                            className="mt-3 bg-gray-900 rounded-xl py-2 items-center"
-                          >
-                            <Text className="text-white font-semibold text-sm">Repay Loan</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 </ScrollView>
@@ -443,16 +298,9 @@ export default function DocumentsScreen() {
                             />
                           </View>
                           <View className="flex-1">
-                            <View className="flex-row items-center gap-2 mb-1">
-                              <Text className="text-base font-semibold text-gray-900">
-                                {loan.plan?.name ?? "Loan"}
-                              </Text>
-                              {loan.contractLoanId != null && (
-                                <View className="bg-orange-100 rounded px-1.5 py-0.5">
-                                  <Text className="text-orange-600 font-bold text-xs">#{loan.contractLoanId}</Text>
-                                </View>
-                              )}
-                            </View>
+                            <Text className="text-base font-semibold text-gray-900 mb-1">
+                              {loan.plan?.name ?? "Loan"}
+                            </Text>
                             <Text className="text-xs text-gray-400">
                               {loan.principal} ETH · {STATUS_LABELS[loan.status] ?? loan.status}
                             </Text>
@@ -479,115 +327,6 @@ export default function DocumentsScreen() {
         </View>
       )}
     </SafeAreaView>
-
-      {/* Loan Action Modal — Deposit Collateral / Repay Loan */}
-      <Modal
-        visible={actionModal.visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseModal}
-      >
-        <SafeAreaView className="flex-1 bg-white">
-          {/* Header */}
-          <View className="flex-row items-center px-5 py-4 border-b border-gray-100">
-            <TouchableOpacity
-              onPress={handleCloseModal}
-              className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
-            >
-              <Ionicons name="close" size={20} color="#000" />
-            </TouchableOpacity>
-            <Text className="text-lg font-bold text-black ml-3">
-              {actionModal.type === 'deposit' ? 'Deposit Collateral' : 'Repay Loan'}
-            </Text>
-          </View>
-
-          <ScrollView className="flex-1 px-5 pt-5" contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Wallet connection status */}
-            <View className={`rounded-xl p-3 mb-5 flex-row items-center gap-2 ${isConnected ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
-              <View className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
-              <Text className={`text-xs font-medium ${isConnected ? 'text-green-700' : 'text-gray-500'}`}>
-                {isConnected ? 'Wallet connected · Sepolia testnet' : 'No wallet connected — tap Confirm to connect'}
-              </Text>
-            </View>
-
-            {/* Deposit Collateral info */}
-            {actionModal.loan && actionModal.type === 'deposit' && (
-              <>
-                <View className="mb-4">
-                  <Text className="text-xs text-gray-500 mb-1">Amount to Send</Text>
-                  <Text className="text-2xl font-bold text-gray-900">
-                    {actionModal.loan.collateralRequired} ETH
-                  </Text>
-                  <Text className="text-xs text-gray-400 mt-1">on Sepolia testnet</Text>
-                </View>
-
-                {actionModal.loan.contractLoanId != null && (
-                  <View className="mb-5 bg-gray-50 rounded-xl p-3">
-                    <Text className="text-xs text-gray-500 mb-1">On-chain Loan ID</Text>
-                    <Text className="text-lg font-bold text-gray-900">#{actionModal.loan.contractLoanId}</Text>
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Repay Loan info */}
-            {actionModal.loan && actionModal.type === 'repay' && (
-              <>
-                <View className="mb-4">
-                  <Text className="text-xs text-gray-500 mb-1">Principal</Text>
-                  <Text className="text-base font-bold text-gray-900">
-                    {actionModal.loan.principal} ETH
-                  </Text>
-                </View>
-
-                <View className="mb-4">
-                  <Text className="text-xs text-gray-500 mb-1">Remaining Owed (approx.)</Text>
-                  <Text className="text-base font-semibold text-gray-700">
-                    {parseFloat(actionModal.loan.principalOwed ?? actionModal.loan.principal).toFixed(6)} ETH
-                  </Text>
-                </View>
-
-                <View className="mb-5">
-                  <Text className="text-xs font-semibold text-gray-700 mb-1">Repayment Amount (ETH)</Text>
-                  <View className="border border-gray-200 rounded-xl px-4 py-3">
-                    <TextInput
-                      value={repayAmountInput}
-                      onChangeText={setRepayAmountInput}
-                      placeholder="e.g. 0.05"
-                      placeholderTextColor="#C0C0C0"
-                      keyboardType="decimal-pad"
-                      className="text-sm text-gray-900"
-                    />
-                  </View>
-                </View>
-              </>
-            )}
-
-            {actionError && (
-              <Text className="text-sm text-red-500 mb-4">{actionError}</Text>
-            )}
-
-            <TouchableOpacity
-              onPress={handleConfirmAction}
-              disabled={isActioning}
-              className={`rounded-2xl py-4 items-center ${isActioning ? 'bg-gray-300' : 'bg-gray-900'}`}
-            >
-              {isActioning ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-semibold text-base">
-                  {!isConnected
-                    ? 'Connect Wallet'
-                    : actionModal.type === 'deposit'
-                    ? 'Confirm Deposit on Sepolia'
-                    : 'Confirm Repayment on Sepolia'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </>
   );
 }
 

@@ -14,11 +14,6 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost
 export const APP_NAME = "Avelon";
 export const APP_VERSION = "1.0.0";
 
-// Blockchain — Sepolia Testnet (contract addresses are public, safe to embed)
-export const COLLATERAL_MANAGER_ADDRESS = "0x4CFf8B5c2f7378EFcC3cD6Aab4f813c08Cf9358e";
-export const TREASURY_ADDRESS = "0x38f00aD0B7f04CF4772A60349Bcfff7035082cd4";
-export const SEPOLIA_CHAIN_ID = 11155111;
-
 // Environment
 export const IS_DEV = __DEV__;
 export const IS_PROD = !__DEV__;
@@ -37,15 +32,4 @@ export const FIREBASE_CONFIG = {
     appId: Platform.OS === 'ios'
         ? process.env.EXPO_PUBLIC_FIREBASE_APP_ID_IOS
         : process.env.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID,
-};
-
-// WalletConnect Configuration
-export const WALLETCONNECT_CONFIG = {
-    projectId: process.env.EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
-    metadata: {
-        name: "Avelon",
-        description: "Decentralized Crypto Lending Platform",
-        url: "https://avelon.io",
-        icons: ["https://avelon.io/icon.png"],
-    },
 };

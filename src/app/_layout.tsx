@@ -11,10 +11,6 @@ import {
   Syne_700Bold,
   Syne_800ExtraBold,
 } from "@expo-google-fonts/syne";
-import { WagmiProvider } from "wagmi";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { AppKitProvider, AppKit } from "@reown/appkit-react-native";
-import { wagmiConfig, queryClient } from "@/services/web3.service";
 import { setupAndroidChannel } from "@/services/notification.service";
 import "../styles/global.css";
 
@@ -131,18 +127,11 @@ export default function RootLayout() {
   }
 
   return (
-    <AppKitProvider>
-      <WagmiProvider config={wagmiConfig}>
-        <QueryClientProvider client={queryClient}>
-          <AppKit />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="loan-application" />
-          </Stack>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </AppKitProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="loan-application" />
+    </Stack>
   );
 }
