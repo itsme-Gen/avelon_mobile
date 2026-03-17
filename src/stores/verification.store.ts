@@ -32,6 +32,7 @@ export interface IdDocumentsData {
   signatureUri: string | null;
   proofOfIncomeUri: string | null;
   proofOfAddressUri: string | null;
+  selfieUri: string | null;
 }
 
 type VerificationState = {
@@ -83,6 +84,7 @@ const initialIdDocuments: IdDocumentsData = {
   signatureUri: null,
   proofOfIncomeUri: null,
   proofOfAddressUri: null,
+  selfieUri: null,
 };
 
 export const useVerificationStore = create<VerificationState>((set) => ({

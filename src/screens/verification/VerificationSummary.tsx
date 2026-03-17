@@ -27,10 +27,14 @@ export default function VerificationSummary() {
     const handleVerify = async () => {
         setIsSubmitting(true);
 
+        // DatePicker stores as MM/DD/YYYY — backend expects YYYY-MM-DD
+        const [mon, day, yr] = basicInfo.dateOfBirth.split('/');
+        const isoDateOfBirth = `${yr}-${mon}-${day}`;
+
         try {
             // Step 1: Submit profile info
             const profileResult = await kycService.submitKycProfile({
-                dateOfBirth: basicInfo.dateOfBirth,
+                dateOfBirth: isoDateOfBirth,
                 gender: basicInfo.gender,
                 civilStatus: basicInfo.civilStatus,
                 educationLevel: basicInfo.educationLevel,
@@ -58,7 +62,8 @@ export default function VerificationSummary() {
             }
 
             // Step 2: Upload documents
-            const uploads: Array<{ uri: string | null; type: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE' | 'PROOF_OF_INCOME' | 'PROOF_OF_ADDRESS' }> = [
+            const uploads: Array<{ uri: string | null; type: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE' | 'PROOF_OF_INCOME' | 'PROOF_OF_ADDRESS' | 'SELFIE' }> = [
+                { uri: idDocuments.selfieUri, type: 'SELFIE' },
                 { uri: idDocuments.frontUri, type: 'GOVERNMENT_ID' },
                 { uri: idDocuments.backUri, type: 'GOVERNMENT_ID_BACK' },
                 { uri: idDocuments.signatureUri, type: 'E_SIGNATURE' },
@@ -209,6 +214,7 @@ export default function VerificationSummary() {
                     </View>
 
                     <View className="space-y-3 mb-4">
+                        <DocPreview label="Selfie" uri={idDocuments.selfieUri} />
                         <DocPreview label="ID Front" uri={idDocuments.frontUri} />
                         <DocPreview label="ID Back" uri={idDocuments.backUri} />
                         <DocPreview label="E-Signature" uri={idDocuments.signatureUri} />
@@ -244,7 +250,7 @@ export default function VerificationSummary() {
             >
                 {/* Progress Dots */}
                 <View className="px-6 pt-4 pb-3">
-                    <ProgressDots currentStep={3} totalSteps={3} />
+                    <ProgressDots currentStep={4} totalSteps={4} />
                 </View>
 
                 {/* Action Buttons */}
