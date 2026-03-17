@@ -278,7 +278,7 @@ export default function IDVerification() {
       proofOfAddressUri: selectedAddress,
     });
 
-    router.push("/(verification)/SelfieCapture");
+    router.push("/(verification)/VerificationSummary");
   };
 
   const requiredComplete = !!(selectedIdType && selectedIdFront && selectedIdBack && selectedSignature);
@@ -419,7 +419,7 @@ export default function IDVerification() {
       >
         {/* Progress Dots */}
         <View className="px-6 pt-4 pb-3">
-          <ProgressDots currentStep={2} totalSteps={4} />
+          <ProgressDots currentStep={2} totalSteps={3} />
         </View>
 
         {/* Buttons */}

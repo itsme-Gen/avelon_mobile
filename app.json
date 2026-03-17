@@ -54,12 +54,6 @@
           "cameraPermission": "Avelon needs access to your camera to capture ID documents for verification.",
           "photosPermission": "Avelon needs access to your photos to upload ID documents for verification."
         }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Avelon needs access to your camera to capture your selfie for identity verification."
-        }
       ]
     ],
     "experiments": {

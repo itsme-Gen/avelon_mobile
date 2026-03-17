@@ -20,21 +20,14 @@ export default function VerificationLayout() {
         }}
       />
 
-       <Stack.Screen
+       <Stack.Screen 
         name="IdVerification"
         options={{
           title: "ID Verification"
         }}
       />
 
-      <Stack.Screen
-        name="SelfieCapture"
-        options={{
-          title: "Selfie Capture"
-        }}
-      />
-
-      <Stack.Screen
+      <Stack.Screen 
         name="VerificationSummary"
         options={{
           title: "Verification Summary"

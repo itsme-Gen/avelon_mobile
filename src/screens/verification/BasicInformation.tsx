@@ -454,7 +454,7 @@ export default function BasicInformation() {
       >
         {/* Progress Dots */}
         <View className="px-6 pt-4 pb-3">
-          <ProgressDots currentStep={0} totalSteps={4} />
+          <ProgressDots currentStep={0} totalSteps={3} />
         </View>
 
         {/* Action Buttons */}

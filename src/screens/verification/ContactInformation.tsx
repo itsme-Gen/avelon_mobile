@@ -58,7 +58,7 @@ export default function ContactInformation() {
             <View className="flex-1" />
 
             {/* Progress Dots - Step 2 of 3 */}
-            <ProgressDots currentStep={1} totalSteps={4} />
+            <ProgressDots currentStep={1} totalSteps={3} />
 
             {/* Action Buttons */}
             <View 
