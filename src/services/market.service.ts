@@ -21,6 +21,16 @@ export interface PriceHistoryPoint {
     createdAt: string;
 }
 
+function getNetworkErrorMessage(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.toLowerCase().includes('network request failed')) {
+        return `Unable to reach market API (${API_BASE_URL}). Check your internet connection and EXPO_PUBLIC_API_URL configuration.`;
+    }
+
+    return 'Network error. Please try again.';
+}
+
 // ─── API Calls ──────────────────────────────────────────────
 
 /**
@@ -42,7 +52,7 @@ export async function getPrice(): Promise<{ success: boolean; data?: PriceData; 
         return { success: true, data: result.data };
     } catch (error) {
         console.error('[Market] Price error:', error);
-        return { success: false, error: 'Network error. Please try again.' };
+        return { success: false, error: getNetworkErrorMessage(error) };
     }
 }
 
@@ -68,6 +78,6 @@ export async function getPriceHistory(
         return { success: true, data: result.data?.history };
     } catch (error) {
         console.error('[Market] Price history error:', error);
-        return { success: false, error: 'Network error. Please try again.' };
+        return { success: false, error: getNetworkErrorMessage(error) };
     }
 }
