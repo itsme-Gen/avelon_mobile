@@ -27,10 +27,14 @@ export default function VerificationSummary() {
     const handleVerify = async () => {
         setIsSubmitting(true);
 
+        // DatePicker stores as MM/DD/YYYY — backend expects YYYY-MM-DD
+        const [mon, day, yr] = basicInfo.dateOfBirth.split('/');
+        const isoDateOfBirth = `${yr}-${mon}-${day}`;
+
         try {
             // Step 1: Submit profile info
             const profileResult = await kycService.submitKycProfile({
-                dateOfBirth: basicInfo.dateOfBirth,
+                dateOfBirth: isoDateOfBirth,
                 gender: basicInfo.gender,
                 civilStatus: basicInfo.civilStatus,
                 educationLevel: basicInfo.educationLevel,
