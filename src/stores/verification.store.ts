@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import * as kycService from "@/services/kyc.service";
+import { create } from "zustand";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ const initialContactInfo: ContactInfoData = {
 };
 
 const initialIdDocuments: IdDocumentsData = {
-  idType: '',
+  idType: "",
   frontUri: null,
   backUri: null,
   signatureUri: null,
@@ -94,7 +94,11 @@ export const useVerificationStore = create<VerificationState>((set) => ({
   idDocuments: { ...initialIdDocuments },
 
   markVerified: () => set({ isVerified: true, kycStatus: "APPROVED" }),
-  resetVerification: () => set({ isVerified: false, kycStatus: null }),
+  resetVerification: () =>
+    set({
+      isVerified: false,
+      kycStatus: null,
+    }),
   setKycStatus: (status) =>
     set({
       kycStatus: status,

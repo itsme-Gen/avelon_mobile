@@ -1,19 +1,19 @@
+import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import * as loanService from "@/services/loan.service";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CustomAlert } from "@/components/alertbutton/CustomAlert";
-import * as loanService from "@/services/loan.service";
 
 function TermsAndConditionsModal({
   visible,
@@ -147,11 +147,11 @@ export default function LoanApplication() {
     visible: boolean;
     title: string;
     message?: string;
-    buttons: Array<{
+    buttons: {
       text: string;
       onPress?: () => void;
       style?: "default" | "cancel" | "destructive";
-    }>;
+    }[];
     icon?: keyof typeof Ionicons.glyphMap;
     iconColor?: string;
   }>({
@@ -165,6 +165,21 @@ export default function LoanApplication() {
     setShowTerms(false);
   };
 
+  const principalAmount = Number(
+    (loanAmount || "0")
+      .replace(/ETH/i, "")
+      .replace(/[^0-9.]/g, "")
+      .trim(),
+  );
+  const interestRateValue = Number(
+    (interestRate || "0").replace(/%/g, "").trim(),
+  );
+  const durationDays = Number(duration) || 30;
+  const monthsCount = Math.max(1, Math.round(durationDays / 30));
+  const monthlyRepayment = monthsCount
+    ? (principalAmount * (1 + interestRateValue / 100)) / monthsCount
+    : 0;
+  const formattedMonthlyRepayment = `${monthlyRepayment.toFixed(6)} ETH`;
   const handleApply = async () => {
     if (!planId) {
       setAlert({
@@ -376,7 +391,7 @@ export default function LoanApplication() {
         <View className="mx-5 mt-8 items-center">
           <Text className="text-sm text-gray-500 mb-1">Monthly Repayment:</Text>
           <Text className="text-2xl font-bold text-gray-900">
-            0.05245412 ETH
+            {formattedMonthlyRepayment}
           </Text>
         </View>
       </ScrollView>
