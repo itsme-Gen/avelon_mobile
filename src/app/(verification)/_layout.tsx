@@ -7,41 +7,46 @@ export default function VerificationLayout() {
         headerShown: false, // cleaner flow
       }}
     >
-      <Stack.Screen 
+      <Stack.Screen
         name="BasicInformation"
         options={{
-          title: "Basic Information"
+          title: "Basic Information",
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="ContactInformation"
         options={{
-          title: "Contact Information"
+          title: "Contact Information",
         }}
       />
 
-       <Stack.Screen 
-        name="IdVerification"
+      <Stack.Screen
+        name="DocmentUpload"
         options={{
-          title: "ID Verification"
+          title: "Document Upload",
         }}
       />
 
-      <Stack.Screen 
+      <Stack.Screen
         name="VerificationSummary"
         options={{
-          title: "Verification Summary"
+          title: "Verification Summary",
         }}
       />
 
-      <Stack.Screen 
+      <Stack.Screen
+        name="faceRecognition"
+        options={{
+          title: "Face Recognition",
+        }}
+      />
+
+      <Stack.Screen
         name="Success"
         options={{
-          title: "Verification Success"
+          title: "Verification Success",
         }}
       />
-
     </Stack>
-
   );
 }
