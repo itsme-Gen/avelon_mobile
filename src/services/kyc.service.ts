@@ -199,6 +199,52 @@ export async function submitKyc(): Promise<{ success: boolean; data?: KycSubmitR
     }
 }
 
+// ─── Face Verification ──────────────────────────────────────
+
+export interface FaceVerifyResult {
+    passed: boolean;
+    score: number;
+    confidence: number;
+    message: string | null;
+}
+
+/**
+ * Upload a selfie and run face matching against the user's government ID.
+ * The backend looks up the existing GOVERNMENT_ID document and calls the LLM service.
+ */
+export async function verifyFace(
+    selfieUri: string,
+): Promise<{ success: boolean; data?: FaceVerifyResult; error?: string }> {
+    try {
+        const headers = await authHeaders();
+        const formData = new FormData();
+
+        const fileName = selfieUri.split('/').pop() || `selfie_${Date.now()}.jpg`;
+        formData.append('file', {
+            uri: selfieUri,
+            name: fileName,
+            type: 'image/jpeg',
+        } as any);
+
+        const response = await fetch(`${API_BASE_URL}/kyc/verify/face`, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Face verification failed' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[KYC] Face verify error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
 /**
  * Get current KYC status
  */
