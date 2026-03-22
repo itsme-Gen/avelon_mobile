@@ -14,6 +14,10 @@ import {
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import { useWalletConnect } from "@/hooks/useWalletConnect";
+import { useAppKit } from "@reown/appkit-wagmi-react-native";
+import { useDisconnect } from "wagmi";
+import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import * as walletService from "@/services/wallet.service";
 import * as marketService from "@/services/market.service";
 import type { WalletInfo, WalletBalance } from "@/services/wallet.service";
@@ -34,11 +38,16 @@ const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
 export default function WalletScreen() {
   const [showVerification, setShowVerification] = useState(false);
-  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showManualConnect, setShowManualConnect] = useState(false);
   const [addressInput, setAddressInput] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
+
+  // WalletConnect hooks
+  const { address: wcAddress, isConnected: wcConnected, signVerificationMessage } = useWalletConnect();
+  const { open: openAppKit } = useAppKit();
+  const { disconnectAsync } = useDisconnect();
 
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
   const [balances, setBalances] = useState<WalletBalance[]>([]);
@@ -93,7 +102,69 @@ export default function WalletScreen() {
     fetchMarketData();
   }, [fetchWalletData, fetchMarketData]);
 
-  const handleConnect = async () => {
+  // Auto-register wallet with backend when WalletConnect connects
+  useEffect(() => {
+    if (!wcConnected || !wcAddress) return;
+
+    const alreadyRegistered = wallets.some(
+      (w) => w.address.toLowerCase() === wcAddress.toLowerCase()
+    );
+    if (alreadyRegistered) return;
+
+    const registerWcWallet = async () => {
+      setIsConnecting(true);
+      try {
+        // Step 1: Request nonce from backend
+        const connectRes = await walletService.connectWallet(wcAddress);
+        if (!connectRes.success || !connectRes.data?.message) {
+          throw new Error(connectRes.error || "Failed to get verification message");
+        }
+
+        // Step 2: Sign the nonce message with WalletConnect
+        const signature = await signVerificationMessage(connectRes.data.message);
+
+        // Step 3: Verify signature with backend
+        const verifyRes = await walletService.verifyWallet(
+          wcAddress,
+          signature,
+          connectRes.data.message
+        );
+        if (!verifyRes.success) {
+          throw new Error(verifyRes.error || "Wallet verification failed");
+        }
+
+        fetchWalletData();
+        fetchMarketData();
+        setAlert({
+          visible: true,
+          title: "Wallet Connected",
+          message: "Your wallet has been connected and verified via WalletConnect.",
+          buttons: [{ text: "OK" }],
+          icon: "checkmark-circle",
+          iconColor: "#10B981",
+        });
+      } catch (error) {
+        console.error("[Wallet] WC registration error:", error);
+        setAlert({
+          visible: true,
+          title: "Connection Failed",
+          message: getWalletErrorMessage(error),
+          buttons: [{ text: "OK" }],
+          icon: "alert-circle",
+          iconColor: "#EF4444",
+        });
+        // Disconnect WalletConnect if backend registration fails
+        try { await disconnectAsync(); } catch {}
+      } finally {
+        setIsConnecting(false);
+      }
+    };
+
+    registerWcWallet();
+  }, [wcConnected, wcAddress]);
+
+  // Manual address connection (fallback)
+  const handleManualConnect = async () => {
     const trimmed = addressInput.trim();
     if (!ETH_ADDRESS_REGEX.test(trimmed)) {
       setAlert({
@@ -110,7 +181,7 @@ export default function WalletScreen() {
     const result = await walletService.connectAndVerify(trimmed);
     setIsConnecting(false);
     if (result.success) {
-      setShowConnectModal(false);
+      setShowManualConnect(false);
       setAddressInput("");
       fetchWalletData();
       fetchMarketData();
@@ -146,6 +217,10 @@ export default function WalletScreen() {
           text: "Disconnect",
           style: "destructive",
           onPress: async () => {
+            // Disconnect WalletConnect session if active
+            if (wcConnected) {
+              try { await disconnectAsync(); } catch {}
+            }
             const result = await walletService.removeWallet(primaryWallet.id);
             if (result.success) {
               fetchWalletData();
@@ -304,11 +379,11 @@ export default function WalletScreen() {
         >
           {renderVerifyBanner}
 
-          {/* Connect Wallet Modal */}
-          {showConnectModal && (
+          {/* Manual Connect Fallback */}
+          {showManualConnect && (
             <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200">
               <Text className="text-base font-bold text-gray-900 mb-3">
-                Connect Wallet
+                Connect Manually
               </Text>
               <Text className="text-sm text-gray-500 mb-3">
                 Enter your Ethereum wallet address
@@ -324,13 +399,13 @@ export default function WalletScreen() {
               />
               <View className="flex-row gap-3">
                 <TouchableOpacity
-                  onPress={() => { setShowConnectModal(false); setAddressInput(""); }}
+                  onPress={() => { setShowManualConnect(false); setAddressInput(""); }}
                   className="flex-1 bg-gray-100 rounded-full py-3 items-center"
                 >
                   <Text className="text-sm font-semibold text-gray-700">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={handleConnect}
+                  onPress={handleManualConnect}
                   disabled={isConnecting}
                   className="flex-1 bg-black rounded-full py-3 items-center"
                 >
@@ -341,6 +416,16 @@ export default function WalletScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+            </View>
+          )}
+
+          {/* Connecting overlay */}
+          {isConnecting && !showManualConnect && (
+            <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200 items-center">
+              <ActivityIndicator size="large" color="#f8893c" />
+              <Text className="text-sm text-gray-600 mt-3">
+                Verifying wallet connection...
+              </Text>
             </View>
           )}
 
@@ -364,8 +449,11 @@ export default function WalletScreen() {
               <Text className="text-[#ffd7c1] text-sm text-center mb-5">
                 Connect your Ethereum wallet to view balances and apply for loans.
               </Text>
+
+              {/* Primary: WalletConnect */}
               <TouchableOpacity
-                onPress={() => setShowConnectModal(true)}
+                onPress={() => openAppKit()}
+                disabled={isConnecting}
                 style={{
                   backgroundColor: "rgba(255,255,255,0.22)",
                   borderRadius: 18,
@@ -373,9 +461,19 @@ export default function WalletScreen() {
                   paddingHorizontal: 32,
                   borderWidth: 1,
                   borderColor: "rgba(255,255,255,0.3)",
+                  marginBottom: 12,
                 }}
               >
                 <Text className="text-white font-semibold text-base">Connect Wallet</Text>
+              </TouchableOpacity>
+
+              {/* Fallback: Manual address entry */}
+              <TouchableOpacity
+                onPress={() => setShowManualConnect(true)}
+              >
+                <Text className="text-[#ffeede] text-xs underline">
+                  Or enter address manually
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -526,10 +624,16 @@ export default function WalletScreen() {
                 {primaryWallet?.isVerified ? "Verified" : "Pending Verification"}
               </Text>
             </View>
-            <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center justify-between mb-2">
               <Text className="text-[13px] text-[#6b7280]">Connected Wallets</Text>
               <Text className="text-[13px] font-medium text-[#111827]">{wallets.length}</Text>
             </View>
+            {wcConnected && (
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[13px] text-[#6b7280]">WalletConnect</Text>
+                <Text className="text-[13px] font-medium text-green-600">Active</Text>
+              </View>
+            )}
           </View>
 
           {/* Analytics */}
