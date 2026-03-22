@@ -21,6 +21,8 @@ export default function VerificationSummary() {
   const contactInfo = useVerificationStore((s) => s.contactInfo);
   const idDocuments = useVerificationStore((s) => s.idDocuments);
   const markVerified = useVerificationStore((s) => s.markVerified);
+  const faceMatchPassed = useVerificationStore((s) => s.faceMatchPassed);
+  const faceMatchScore = useVerificationStore((s) => s.faceMatchScore);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState({
     visible: false,
@@ -273,8 +275,34 @@ export default function VerificationSummary() {
             <DocPreview label="ID Front" uri={idDocuments.frontUri} />
             <DocPreview label="ID Back" uri={idDocuments.backUri} />
             <DocPreview label="E-Signature" uri={idDocuments.signatureUri} />
-            <DocPreview label="Face Photo" uri={idDocuments.faceUri} />
+            <DocPreview
+              label="Face Photo"
+              uri={idDocuments.faceUri}
+              faceMatchPassed={faceMatchPassed}
+              faceMatchScore={faceMatchScore}
+            />
           </View>
+
+          {/* Face match warning */}
+          {faceMatchPassed === false && (
+            <View className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <Text className="text-sm text-red-800 font-medium mb-1">
+                Face Verification Failed
+              </Text>
+              <Text className="text-sm text-red-700">
+                Your selfie did not match your government ID. Please go back and
+                retake the photo.
+              </Text>
+            </View>
+          )}
+          {faceMatchPassed === null && idDocuments.faceUri && (
+            <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <Text className="text-sm text-yellow-800">
+                Face verification was not completed. Please go back and complete the
+                face recognition step.
+              </Text>
+            </View>
+          )}
 
           {/* Optional Documents Section */}
           {(idDocuments.proofOfIncomeUri || idDocuments.proofOfAddressUri) && (
@@ -327,9 +355,9 @@ export default function VerificationSummary() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className={`flex-1 rounded-full py-4 ${isSubmitting ? "bg-gray-400" : "bg-black"}`}
+            className={`flex-1 rounded-full py-4 ${isSubmitting || faceMatchPassed !== true ? "bg-gray-400" : "bg-black"}`}
             onPress={handleVerify}
-            disabled={isSubmitting}
+            disabled={isSubmitting || faceMatchPassed !== true}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
@@ -369,7 +397,35 @@ function InfoItem({ icon, label }: { icon: string; label: string }) {
 }
 
 // Document thumbnail preview
-function DocPreview({ label, uri }: { label: string; uri: string | null }) {
+function DocPreview({
+  label,
+  uri,
+  faceMatchPassed,
+  faceMatchScore,
+}: {
+  label: string;
+  uri: string | null;
+  faceMatchPassed?: boolean | null;
+  faceMatchScore?: number | null;
+}) {
+  // Determine status icon for face photo row
+  const hasFaceResult = faceMatchPassed !== undefined && faceMatchPassed !== null;
+  const statusIcon = hasFaceResult
+    ? faceMatchPassed
+      ? { name: "checkmark-circle" as const, color: "#22C55E" }
+      : { name: "close-circle" as const, color: "#EF4444" }
+    : uri
+      ? { name: "checkmark-circle" as const, color: "#22C55E" }
+      : { name: "alert-circle" as const, color: "#EF4444" };
+
+  const subText = hasFaceResult
+    ? faceMatchPassed
+      ? `Match: ${faceMatchScore !== null && faceMatchScore !== undefined ? Math.round(faceMatchScore * 100) : "—"}%`
+      : "Face mismatch — go back to retake"
+    : uri
+      ? "Uploaded"
+      : "Not uploaded";
+
   return (
     <View className="flex-row items-center bg-white rounded-lg p-3 border border-gray-200">
       {uri ? (
@@ -385,15 +441,13 @@ function DocPreview({ label, uri }: { label: string; uri: string | null }) {
       )}
       <View className="flex-1">
         <Text className="text-sm font-medium text-gray-900">{label}</Text>
-        <Text className="text-xs text-gray-500">
-          {uri ? "Uploaded" : "Not uploaded"}
+        <Text
+          className={`text-xs ${hasFaceResult && !faceMatchPassed ? "text-red-600" : "text-gray-500"}`}
+        >
+          {subText}
         </Text>
       </View>
-      {uri ? (
-        <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-      ) : (
-        <Ionicons name="alert-circle" size={20} color="#EF4444" />
-      )}
+      <Ionicons name={statusIcon.name} size={20} color={statusIcon.color} />
     </View>
   );
 }

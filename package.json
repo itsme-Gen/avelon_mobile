@@ -21,6 +21,7 @@
     }
   },
   "dependencies": {
+    "@avelon_capstone/types": "file:../avelon_types",
     "@expo-google-fonts/syne": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
