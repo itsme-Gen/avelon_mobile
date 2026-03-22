@@ -240,12 +240,29 @@ export default function LoanApplication() {
       setAlert({
         visible: true,
         title: "Loan Applied",
-        message: "Your loan application has been submitted successfully.",
+        message: "Your loan application has been submitted. Deposit collateral to activate it.",
         icon: "checkmark-circle-outline",
         iconColor: "#10B981",
         buttons: [
           {
-            text: "OK",
+            text: "Deposit Collateral",
+            onPress: () => {
+              const loan = result.data!;
+              router.replace({
+                pathname: "/collateral-deposit",
+                params: {
+                  loanId: loan.id,
+                  contractLoanId: String(loan.contractLoanId ?? ""),
+                  collateralRequired: loan.collateralRequired,
+                  depositAddress: loan.depositAddress ?? "",
+                  loanTitle: loanTitle,
+                },
+              });
+            },
+          },
+          {
+            text: "Later",
+            style: "cancel",
             onPress: () => router.back(),
           },
         ],
