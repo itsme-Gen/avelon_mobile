@@ -7,7 +7,7 @@ import {
 } from 'wagmi';
 import { encodeFunctionData, parseEther } from 'viem';
 import { sepolia } from 'wagmi/chains';
-import { COLLATERAL_MANAGER_ABI } from '@avelon_capstone/types';
+import { COLLATERAL_MANAGER_ABI } from '@/constants/abis';
 
 export function useWalletConnect() {
     const { address, isConnected } = useAccount();

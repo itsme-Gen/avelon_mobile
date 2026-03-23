@@ -1,4 +1,5 @@
-import "react-native-get-random-values"; // Must be first — crypto polyfill for WalletConnect
+import "@walletconnect/react-native-compat"; // Must be FIRST — patches Object.entries/keys and Keychain for WalletConnect
+import "react-native-get-random-values"; // Crypto polyfill for WalletConnect
 import { Stack } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";

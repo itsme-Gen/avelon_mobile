@@ -1,6 +1,6 @@
 import { useEstimateGas, useFeeData } from 'wagmi';
 import { encodeFunctionData, formatEther, parseEther } from 'viem';
-import { COLLATERAL_MANAGER_ABI } from '@avelon_capstone/types';
+import { COLLATERAL_MANAGER_ABI } from '@/constants/abis';
 
 interface GasEstimateResult {
     /** Gas limit with 20% buffer applied */
