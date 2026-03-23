@@ -1,7 +1,7 @@
-import '@walletconnect/react-native-compat';
-import { createAppKit } from '@reown/appkit-wagmi-react-native';
-import { createConfig, http } from 'wagmi';
+import { WagmiAdapter, formatNetwork } from '@reown/appkit-wagmi-react-native';
+import { createAppKit } from '@reown/appkit-react-native';
 import { sepolia } from 'wagmi/chains';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const projectId = process.env.EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID!;
 
@@ -14,20 +14,29 @@ const metadata = {
     description: 'Decentralized Lending Platform',
     url: 'https://avelon.app',
     icons: ['https://avelon.app/icon.png'],
+    redirect: {
+        native: 'avelon://',
+    },
 };
 
-// CRITICAL: Only Sepolia chain configured — prevents mainnet connections.
-// If user's wallet is on mainnet, wagmi will auto-prompt chain switch.
-export const wagmiConfig = createConfig({
-    chains: [sepolia],
-    transports: {
-        [sepolia.id]: http(),
-    },
+// Convert wagmi chain → Reown AppKit network format
+const sepoliaNetwork = formatNetwork(sepolia);
+
+// Create the wagmi adapter for EVM chains
+const wagmiAdapter = new WagmiAdapter({
+    projectId,
+    networks: [sepoliaNetwork] as any,
 });
 
+// Export the wagmi config from the adapter for WagmiProvider
+export const wagmiConfig = wagmiAdapter.wagmiConfig;
+
+// Initialise the Reown AppKit singleton
 export const appKit = createAppKit({
     projectId,
-    wagmiConfig,
-    defaultChain: sepolia,
     metadata,
+    adapters: [wagmiAdapter],
+    networks: [sepoliaNetwork],
+    defaultNetwork: sepoliaNetwork,
+    storage: AsyncStorage,
 });

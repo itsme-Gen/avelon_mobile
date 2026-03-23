@@ -295,8 +295,8 @@ export async function cancelLoan(
     loanId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/cancel`, {
-            method: 'POST',
+        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}`, {
+            method: 'DELETE',
             headers: await authJsonHeaders(),
         });
 

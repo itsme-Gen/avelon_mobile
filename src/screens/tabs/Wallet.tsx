@@ -15,7 +15,7 @@ import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
 import { useWalletConnect } from "@/hooks/useWalletConnect";
-import { useAppKit } from "@reown/appkit-wagmi-react-native";
+import { useAppKit } from "@reown/appkit-react-native";
 import { useDisconnect } from "wagmi";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import * as walletService from "@/services/wallet.service";
