@@ -1,3 +1,4 @@
+import { verifyFace } from "@/services/kyc.service";
 import { useVerificationStore } from "@/stores/verification.store";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -12,25 +13,30 @@ import {
 	View,
 } from "react-native";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
+
+type VerifyState = "idle" | "verifying" | "passed" | "failed" | "error";
+
 export default function FaceRecognition() {
   const [permission, requestPermission] = useCameraPermissions();
   const router = useRouter();
   const cameraRef = useRef<any>(null);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [verifyState, setVerifyState] = useState<VerifyState>("idle");
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
   const setIdDocuments = useVerificationStore((s) => s.setIdDocuments);
+  const setFaceMatchResult = useVerificationStore((s) => s.setFaceMatchResult);
 
   const handleCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      setIsLoading(true);
+      setIsCapturing(true);
       const photoData = await cameraRef.current.takePictureAsync({
         quality: 0.7,
         base64: false,
         mirrorImage: false,
-        mute: true, // Best effort to suppress shutter sound on Android
+        mute: true,
       });
-      // Flip the image horizontally if using the front camera
       const manipulated = await manipulateAsync(
         photoData.uri,
         [{ flip: FlipType.Horizontal }],
@@ -38,21 +44,58 @@ export default function FaceRecognition() {
       );
       setPhoto(manipulated.uri);
       setIdDocuments({ faceUri: manipulated.uri });
+
+      // Immediately run face verification after capture
+      await runFaceVerification(manipulated.uri);
     } catch (error) {
       console.error("Failed to capture photo:", error);
+      setVerifyState("error");
+      setVerifyMessage("Failed to capture photo. Please try again.");
     } finally {
-      setIsLoading(false);
+      setIsCapturing(false);
     }
   };
+
+  const runFaceVerification = async (selfieUri: string) => {
+    setVerifyState("verifying");
+    setVerifyMessage(null);
+
+    const result = await verifyFace(selfieUri);
+
+    if (!result.success) {
+      setVerifyState("error");
+      setVerifyMessage(result.error || "Verification failed. Please try again.");
+      return;
+    }
+
+    const { passed, score, message } = result.data!;
+    setFaceMatchResult(passed, score);
+
+    if (passed) {
+      setVerifyState("passed");
+      setVerifyMessage(null);
+    } else {
+      setVerifyState("failed");
+      setVerifyMessage(message || "Face does not match the government ID photo.");
+    }
+  };
+
+  const handleRetake = () => {
+    setPhoto(null);
+    setVerifyState("idle");
+    setVerifyMessage(null);
+  };
+
+  const handleContinue = () =>
+    router.push("/(verification)/VerificationSummary");
+
   // Request camera permission on mount
   React.useEffect(() => {
     if (!permission?.granted) {
       requestPermission();
     }
   }, [permission]);
-  const handleRetake = () => setPhoto(null);
-  const handleContinue = () =>
-    router.push("/(verification)/VerificationSummary");
+
   if (!permission) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
@@ -76,6 +119,7 @@ export default function FaceRecognition() {
       </View>
     );
   }
+
   return (
     <View className="flex-1 bg-white">
       <View className="pt-12 px-6">
@@ -102,24 +146,62 @@ export default function FaceRecognition() {
               style={{ width: 240, height: 320 }}
               facing="front"
             />
-            {isLoading && (
+            {isCapturing && (
               <View className="absolute inset-0 bg-black/40 items-center justify-center">
                 <ActivityIndicator size="large" color="#fff" />
               </View>
             )}
           </View>
         ) : (
-          <Image
-            source={{ uri: photo }}
-            style={{
-              width: 240,
-              height: 320,
-              borderRadius: 16,
-              borderWidth: 4,
-              borderColor: "#e5e7eb",
-            }}
-            resizeMode="cover"
-          />
+          <View className="items-center">
+            <Image
+              source={{ uri: photo }}
+              style={{
+                width: 240,
+                height: 320,
+                borderRadius: 16,
+                borderWidth: 4,
+                borderColor:
+                  verifyState === "passed"
+                    ? "#22C55E"
+                    : verifyState === "failed" || verifyState === "error"
+                      ? "#EF4444"
+                      : "#e5e7eb",
+              }}
+              resizeMode="cover"
+            />
+
+            {/* Verification status overlay */}
+            {verifyState === "verifying" && (
+              <View className="mt-4 flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#111827" />
+                <Text className="text-gray-600 text-sm">Verifying face...</Text>
+              </View>
+            )}
+
+            {verifyState === "passed" && (
+              <View className="mt-4 flex-row items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+                <Text className="text-green-800 text-sm font-medium">
+                  Face verified successfully
+                </Text>
+              </View>
+            )}
+
+            {(verifyState === "failed" || verifyState === "error") && (
+              <View className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <Ionicons name="close-circle" size={20} color="#EF4444" />
+                  <Text className="text-red-800 text-sm font-medium">
+                    {verifyState === "failed" ? "Face mismatch" : "Verification error"}
+                  </Text>
+                </View>
+                {verifyMessage ? (
+                  <Text className="text-red-700 text-xs">{verifyMessage}</Text>
+                ) : null}
+              </View>
+            )}
+          </View>
         )}
       </View>
 
@@ -128,7 +210,7 @@ export default function FaceRecognition() {
           <TouchableOpacity
             className="bg-black rounded-full p-5 items-center justify-center mx-auto mt-6"
             onPress={handleCapture}
-            disabled={isLoading}
+            disabled={isCapturing}
             accessibilityLabel="Capture face photo"
           >
             <Ionicons name="camera" size={32} color="#fff" />
@@ -138,16 +220,22 @@ export default function FaceRecognition() {
             <TouchableOpacity
               className="bg-gray-200 rounded-full px-6 py-3"
               onPress={handleRetake}
+              disabled={verifyState === "verifying"}
               accessibilityLabel="Retake photo"
             >
               <Text className="text-gray-700 font-semibold">Retake</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="bg-black rounded-full px-6 py-3"
+              className={`rounded-full px-6 py-3 ${verifyState === "passed" ? "bg-black" : "bg-gray-300"}`}
               onPress={handleContinue}
+              disabled={verifyState !== "passed"}
               accessibilityLabel="Continue"
             >
-              <Text className="text-white font-semibold">Continue</Text>
+              <Text
+                className={`font-semibold ${verifyState === "passed" ? "text-white" : "text-gray-400"}`}
+              >
+                Continue
+              </Text>
             </TouchableOpacity>
           </View>
         )}

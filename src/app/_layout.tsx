@@ -1,3 +1,4 @@
+import "react-native-get-random-values"; // Must be first — crypto polyfill for WalletConnect
 import { Stack } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
@@ -12,6 +13,7 @@ import {
   Syne_800ExtraBold,
 } from "@expo-google-fonts/syne";
 import { setupAndroidChannel } from "@/services/notification.service";
+import { WalletProvider } from "@/providers/WalletProvider";
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
@@ -127,11 +129,14 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="loan-application" />
-    </Stack>
+    <WalletProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="loan-application" />
+        <Stack.Screen name="collateral-deposit" />
+      </Stack>
+    </WalletProvider>
   );
 }

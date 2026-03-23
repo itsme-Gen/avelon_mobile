@@ -52,6 +52,22 @@ export interface Loan {
     wallet: { address: string };
 }
 
+export interface LoanTransaction {
+    id: string;
+    loanId: string;
+    type: 'COLLATERAL_DEPOSIT' | 'LOAN_DISBURSEMENT' | 'REPAYMENT' | 'COLLATERAL_TOPUP' | 'COLLATERAL_RETURN' | 'LIQUIDATION' | 'FEE_PAYMENT';
+    amount: string;
+    amountPHP: string | null;
+    ethPrice: string | null;
+    txHash: string | null;
+    blockNumber: number | null;
+    gasUsed: string | null;
+    confirmed: boolean;
+    confirmedAt: string | null;
+    note: string | null;
+    createdAt: string;
+}
+
 export interface LoanApplicationData {
     planId: string;
     amount: string;
@@ -77,6 +93,29 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
 }
 
 // ─── API Calls ──────────────────────────────────────────────
+
+/**
+ * Fetch blockchain contract addresses (CollateralManager, etc.)
+ */
+export async function getBlockchainStatus(): Promise<{ success: boolean; data?: { contracts: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null } }; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/loans/blockchain/status`, {
+            method: 'GET',
+            headers: await authJsonHeaders(),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to fetch blockchain status' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Loan] Blockchain status error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
 
 /**
  * Get all available loan plans
@@ -270,6 +309,31 @@ export async function cancelLoan(
         return { success: true };
     } catch (error) {
         console.error('[Loan] Cancel loan error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
+/**
+ * Get transactions for a specific loan
+ */
+export async function getLoanTransactions(
+    loanId: string
+): Promise<{ success: boolean; data?: LoanTransaction[]; error?: string }> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/transactions`, {
+            method: 'GET',
+            headers: await authJsonHeaders(),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to fetch transactions' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Loan] Get transactions error:', error);
         return { success: false, error: 'Network error. Please try again.' };
     }
 }

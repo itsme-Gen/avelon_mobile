@@ -44,6 +44,10 @@ type VerificationState = {
   contactInfo: ContactInfoData;
   idDocuments: IdDocumentsData;
 
+  // Face match result (set after FaceRecognition screen)
+  faceMatchPassed: boolean | null;
+  faceMatchScore: number | null;
+
   // Actions
   markVerified: () => void;
   resetVerification: () => void;
@@ -52,6 +56,7 @@ type VerificationState = {
   setBasicInfo: (data: BasicInfoData) => void;
   setContactInfo: (data: ContactInfoData) => void;
   setIdDocuments: (data: Partial<IdDocumentsData>) => void;
+  setFaceMatchResult: (passed: boolean, score: number) => void;
   resetFormData: () => void;
 };
 
@@ -95,6 +100,9 @@ export const useVerificationStore = create<VerificationState>((set) => ({
   contactInfo: { ...initialContactInfo },
   idDocuments: { ...initialIdDocuments },
 
+  faceMatchPassed: null,
+  faceMatchScore: null,
+
   markVerified: () => set({ isVerified: true, kycStatus: "APPROVED" }),
   resetVerification: () =>
     set({
@@ -126,10 +134,14 @@ export const useVerificationStore = create<VerificationState>((set) => ({
     set((state) => ({
       idDocuments: { ...state.idDocuments, ...data },
     })),
+  setFaceMatchResult: (passed, score) =>
+    set({ faceMatchPassed: passed, faceMatchScore: score }),
   resetFormData: () =>
     set({
       basicInfo: { ...initialBasicInfo },
       contactInfo: { ...initialContactInfo },
       idDocuments: { ...initialIdDocuments },
+      faceMatchPassed: null,
+      faceMatchScore: null,
     }),
 }));
