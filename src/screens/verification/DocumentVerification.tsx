@@ -1,9 +1,11 @@
 import { useVerificationStore } from "@/stores/verification.store";
+import { uploadDocument } from "@/services/kyc.service";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+    ActivityIndicator,
     FlatList,
     Image,
     Linking,
@@ -54,6 +56,8 @@ export default function IDVerification() {
     savedDocs.proofOfAddressUri,
   );
   const [showIdTypePicker, setShowIdTypePicker] = useState(false);
+
+  const [isUploading, setIsUploading] = useState(false);
 
   // Aspect ratio matched to actual document dimensions
   const getAspectRatio = (docType: string): [number, number] => {
@@ -286,7 +290,7 @@ export default function IDVerification() {
   };
 
   // Validate all required images are uploaded
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selectedIdType) {
       showAlert({
         title: "ID Type Required",
@@ -321,7 +325,34 @@ export default function IDVerification() {
       proofOfAddressUri: selectedAddress,
     });
 
-    router.push("/(verification)/FaceRecognition");
+    // Upload government ID front to backend so face verification can find it
+    setIsUploading(true);
+    try {
+      const uploadResult = await uploadDocument(selectedIdFront, 'GOVERNMENT_ID');
+      if (!uploadResult.success) {
+        showAlert({
+          title: "Upload Failed",
+          message: uploadResult.error || "Failed to upload government ID. Please try again.",
+          icon: "alert-circle-outline",
+          iconColor: "#EF4444",
+          buttons: [{ text: "OK" }],
+        });
+        return;
+      }
+
+      router.push("/(verification)/FaceRecognition");
+    } catch (error) {
+      console.error("[IDVerification] Upload error:", error);
+      showAlert({
+        title: "Upload Error",
+        message: "Failed to upload government ID. Please check your connection and try again.",
+        icon: "alert-circle-outline",
+        iconColor: "#EF4444",
+        buttons: [{ text: "OK" }],
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const requiredComplete = !!(
@@ -500,18 +531,22 @@ export default function IDVerification() {
 
           <TouchableOpacity
             className={`flex-1 rounded-full py-4 items-center justify-center ${
-              requiredComplete ? "bg-gray-900" : "bg-gray-300"
+              requiredComplete && !isUploading ? "bg-gray-900" : "bg-gray-300"
             }`}
             onPress={handleNext}
-            disabled={!requiredComplete}
+            disabled={!requiredComplete || isUploading}
           >
-            <Text
-              className={`font-semibold text-base ${
-                requiredComplete ? "text-white" : "text-gray-500"
-              }`}
-            >
-              Next
-            </Text>
+            {isUploading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text
+                className={`font-semibold text-base ${
+                  requiredComplete ? "text-white" : "text-gray-500"
+                }`}
+              >
+                Next
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

@@ -60,23 +60,31 @@ export default function FaceRecognition() {
     setVerifyState("verifying");
     setVerifyMessage(null);
 
-    const result = await verifyFace(selfieUri);
+    try {
+      const result = await verifyFace(selfieUri);
 
-    if (!result.success) {
+      if (!result.success) {
+        console.error("[FaceRecognition] Verification failed:", result.error);
+        setVerifyState("error");
+        setVerifyMessage(result.error || "Verification failed. Please try again.");
+        return;
+      }
+
+      const { passed, score, message } = result.data!;
+      setFaceMatchResult(passed, score);
+
+      if (passed) {
+        setVerifyState("passed");
+        setVerifyMessage(null);
+      } else {
+        setVerifyState("failed");
+        setVerifyMessage(message || "Face does not match the government ID photo.");
+      }
+    } catch (error) {
+      console.error("[FaceRecognition] Unexpected error:", error);
+      const msg = error instanceof Error ? error.message : "An unexpected error occurred";
       setVerifyState("error");
-      setVerifyMessage(result.error || "Verification failed. Please try again.");
-      return;
-    }
-
-    const { passed, score, message } = result.data!;
-    setFaceMatchResult(passed, score);
-
-    if (passed) {
-      setVerifyState("passed");
-      setVerifyMessage(null);
-    } else {
-      setVerifyState("failed");
-      setVerifyMessage(message || "Face does not match the government ID photo.");
+      setVerifyMessage(msg);
     }
   };
 

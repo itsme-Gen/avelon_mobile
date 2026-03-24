@@ -486,7 +486,7 @@ export default function LoanPlans() {
                           Frequency
                         </Text>
                         <View className="flex-row flex-wrap gap-2">
-                          {[90, 180, 270].map((duration) => {
+                          {(plan.durationOptions ?? []).map((duration) => {
                             const isActive = duration === selectedDuration;
                             const label = formatDurationLabel(duration);
 

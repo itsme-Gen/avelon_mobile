@@ -97,7 +97,7 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
 /**
  * Fetch blockchain contract addresses (CollateralManager, etc.)
  */
-export async function getBlockchainStatus(): Promise<{ success: boolean; data?: { contracts: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null } }; error?: string }> {
+export async function getBlockchainStatus(): Promise<{ success: boolean; data?: { contracts: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null; treasury: string | null } }; error?: string }> {
     try {
         const response = await fetch(`${API_BASE_URL}/loans/blockchain/status`, {
             method: 'GET',

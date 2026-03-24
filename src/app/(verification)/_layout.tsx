@@ -21,7 +21,7 @@ export default function VerificationLayout() {
       />
 
       <Stack.Screen
-        name="DocmentUpload"
+        name="IDVerification"
         options={{
           title: "Document Upload",
         }}
@@ -35,7 +35,7 @@ export default function VerificationLayout() {
       />
 
       <Stack.Screen
-        name="faceRecognition"
+        name="FaceRecognition"
         options={{
           title: "Face Recognition",
         }}

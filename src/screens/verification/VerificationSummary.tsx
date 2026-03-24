@@ -70,7 +70,7 @@ export default function VerificationSummary() {
         return;
       }
 
-      // Step 2: Upload documents
+      // Step 2: Upload documents (GOVERNMENT_ID already uploaded during ID verification step)
       const uploads: {
         uri: string | null;
         type:
@@ -80,7 +80,6 @@ export default function VerificationSummary() {
           | "PROOF_OF_INCOME"
           | "PROOF_OF_ADDRESS";
       }[] = [
-        { uri: idDocuments.frontUri, type: "GOVERNMENT_ID" },
         { uri: idDocuments.backUri, type: "GOVERNMENT_ID_BACK" },
         { uri: idDocuments.signatureUri, type: "E_SIGNATURE" },
         { uri: idDocuments.proofOfIncomeUri, type: "PROOF_OF_INCOME" },

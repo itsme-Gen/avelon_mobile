@@ -176,6 +176,35 @@ function LoanDetailView({
           </View>
         )}
 
+        {loan.status === "ACTIVE" && (
+          <View className="mx-4 mt-4">
+            <TouchableOpacity
+              onPress={() => {
+                const raw =
+                  parseFloat(loan.principalOwed) +
+                  parseFloat(loan.interestOwed) +
+                  parseFloat(loan.feesOwed);
+                // Truncate (floor) to avoid floating-point rounding up past actual owed
+                const remainingOwed = (Math.floor(raw * 1e8) / 1e8).toString();
+                router.push({
+                  pathname: "/loan-repayment",
+                  params: {
+                    loanId: loan.id,
+                    remainingOwed,
+                    loanTitle: loan.plan?.name ?? "Loan",
+                  },
+                });
+              }}
+              className="bg-gray-900 rounded-2xl py-4 items-center flex-row justify-center"
+            >
+              <Ionicons name="arrow-up-circle-outline" size={20} color="#fff" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Make Repayment
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Transaction History */}
         <View className="mx-4 mt-4 bg-white rounded-2xl p-5">
           <Text className="text-base font-bold text-gray-900 mb-4">

@@ -137,6 +137,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="loan-application" />
         <Stack.Screen name="collateral-deposit" />
+        <Stack.Screen name="loan-repayment" />
       </Stack>
     </WalletProvider>
   );
