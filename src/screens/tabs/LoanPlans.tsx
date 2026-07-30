@@ -6,13 +6,14 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -100,6 +101,62 @@ const TERMS_ITEMS = [
   "We uphold fair access to our services regardless of race, gender, disability, or other personal traits, in line with Philippine laws.",
 ];
 
+const AMOUNT_DECIMALS = 6;
+const MIN_AMOUNT_STEP = 0.0001;
+
+const formatLoanAmount = (value: number) =>
+  Number(value).toFixed(AMOUNT_DECIMALS);
+
+const getAmountStep = (plan: LoanPlan) =>
+  Math.max(
+    Number((plan.maxAmount * 0.01).toFixed(AMOUNT_DECIMALS)),
+    MIN_AMOUNT_STEP,
+  );
+
+const clampAmount = (plan: LoanPlan, value: number) =>
+  Math.min(plan.maxAmount, Math.max(plan.minAmount, value));
+
+const snapAmountToStep = (plan: LoanPlan, value: number) => {
+  const step = getAmountStep(plan);
+  const clamped = clampAmount(plan, value);
+  const snapped =
+    plan.minAmount + Math.round((clamped - plan.minAmount) / step) * step;
+
+  return Number(clampAmount(plan, snapped).toFixed(AMOUNT_DECIMALS));
+};
+
+const sanitizeAmountInput = (value: string) => {
+  const allowed = value.replace(/[^0-9.]/g, "");
+
+  if (!allowed) {
+    return "";
+  }
+
+  const firstDotIndex = allowed.indexOf(".");
+
+  if (firstDotIndex === -1) {
+    return allowed;
+  }
+
+  const whole = allowed.slice(0, firstDotIndex) || "0";
+  const decimal = allowed
+    .slice(firstDotIndex + 1)
+    .replace(/\./g, "")
+    .slice(0, AMOUNT_DECIMALS);
+
+  return `${whole}.${decimal}`;
+};
+
+const parseAmountDraft = (plan: LoanPlan, draft?: string) => {
+  const parsed = Number(draft);
+
+  if (!Number.isFinite(parsed)) {
+    return plan.minAmount;
+  }
+
+  return clampAmount(plan, parsed);
+};
+
 export default function LoanPlans() {
   const router = useRouter();
   const { isVerified } = useVerificationStore();
@@ -110,20 +167,49 @@ export default function LoanPlans() {
   const [selectedDurationByPlan, setSelectedDurationByPlan] = useState<
     Record<string, number | null>
   >({});
-  const [selectedAmountByPlan, setSelectedAmountByPlan] = useState<
-    Record<string, number>
+  const [selectedAmountDraftByPlan, setSelectedAmountDraftByPlan] = useState<
+    Record<string, string>
   >({});
   const [agreedTermsByPlan, setAgreedTermsByPlan] = useState<
     Record<string, boolean>
   >({});
   const [termsModalPlanId, setTermsModalPlanId] = useState<string | null>(null);
   const [showVerification, setShowVerification] = useState(false);
+  const [focusedAmountPlanId, setFocusedAmountPlanId] = useState<string | null>(
+    null,
+  );
   const [infoModal, setInfoModal] = useState<InfoModalState>({
     visible: false,
     title: "",
   });
 
   const formatEth = (value?: number) => `${Number(value ?? 0).toFixed(6)} ETH`;
+
+  const getSelectedAmount = (plan: LoanPlan) =>
+    parseAmountDraft(plan, selectedAmountDraftByPlan[plan.id]);
+
+  const updateAmountDraft = (planId: string, nextValue: string) => {
+    setSelectedAmountDraftByPlan((prev) => ({
+      ...prev,
+      [planId]: nextValue,
+    }));
+  };
+
+  const commitAmountDraft = (plan: LoanPlan) => {
+    const committed = snapAmountToStep(
+      plan,
+      parseAmountDraft(plan, selectedAmountDraftByPlan[plan.id]),
+    );
+
+    updateAmountDraft(plan.id, formatLoanAmount(committed));
+  };
+
+  const changeAmountByStep = (plan: LoanPlan, delta: number) => {
+    const currentAmount = parseAmountDraft(plan, selectedAmountDraftByPlan[plan.id]);
+    const nextAmount = snapAmountToStep(plan, currentAmount + delta);
+
+    updateAmountDraft(plan.id, formatLoanAmount(nextAmount));
+  };
 
   const formatDurationLabel = (days: number) => {
     if (days % 30 === 0) {
@@ -214,11 +300,11 @@ export default function LoanPlans() {
   useEffect(() => {
     if (!plans.length) return;
 
-    setSelectedAmountByPlan((prev) => {
+    setSelectedAmountDraftByPlan((prev) => {
       const next = { ...prev };
       plans.forEach((plan) => {
         if (next[plan.id] == null) {
-          next[plan.id] = plan.minAmount || 0;
+          next[plan.id] = formatLoanAmount(plan.minAmount || 0);
         }
       });
       return next;
@@ -247,7 +333,7 @@ export default function LoanPlans() {
 
   const handleLoanPress = (plan: LoanPlan) => {
     const chosenDuration = selectedDurationByPlan[plan.id];
-    const chosenAmount = selectedAmountByPlan[plan.id] ?? plan.maxAmount;
+    const chosenAmount = getSelectedAmount(plan);
 
     if (!isVerified) {
       setInfoModal({
@@ -285,17 +371,6 @@ export default function LoanPlans() {
         interest: `${plan.interestRate}%`,
         duration: String(chosenDuration),
       },
-    });
-  };
-
-  const adjustAmount = (plan: LoanPlan, delta: number) => {
-    setSelectedAmountByPlan((prev) => {
-      const current = prev[plan.id] ?? plan.minAmount;
-      const nextAmount = Math.min(
-        plan.maxAmount,
-        Math.max(plan.minAmount, current + delta),
-      );
-      return { ...prev, [plan.id]: Number(nextAmount.toFixed(6)) };
     });
   };
 
@@ -405,8 +480,7 @@ export default function LoanPlans() {
               <View>
                 {plans.map((plan) => {
                   const selectedDuration = selectedDurationByPlan[plan.id];
-                  const selectedAmount =
-                    selectedAmountByPlan[plan.id] ?? plan.minAmount;
+                  const selectedAmount = getSelectedAmount(plan);
                   const schedulePreview = selectedDuration
                     ? buildSchedulePreview(
                         plan,
@@ -443,42 +517,96 @@ export default function LoanPlans() {
                         </View>
                       </View>
 
-                      <View className="bg-white border border-gray-200 rounded-3xl px-4 py-5 mb-4 flex-row items-center justify-between">
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustAmount(
-                              plan,
-                              -Math.max(plan.maxAmount * 0.01, 0.0001),
-                            )
-                          }
-                          className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
-                        >
-                          <Ionicons name="remove" size={20} color="#111827" />
-                        </TouchableOpacity>
+                      <View className="bg-white border border-gray-200 rounded-3xl px-4 py-5 mb-4">
+                        <View className="flex-row items-start justify-between mb-3">
+                          <View className="flex-1 pr-3">
+                            <Text className="text-xs uppercase tracking-wide text-gray-500">
+                              Borrow amount
+                            </Text>
+                            <Text className="text-2xl font-bold text-gray-900 mt-1">
+                              {formatEth(selectedAmount)}
+                            </Text>
+                          </View>
 
-                        <View className="flex-1 mx-4 items-center">
-                          <Text className="text-xs text-gray-500">
-                            Borrow amount
-                          </Text>
-                          <Text className="text-2xl font-bold text-gray-900 mt-1">
-                            {formatEth(selectedAmount)}
-                          </Text>
-                          <Text className="text-[11px] text-gray-500 mt-1">
-                            Maximum Amount: {formatEth(plan.maxAmount)}
-                          </Text>
+                          <View className="items-end">
+                            <Text className="text-[11px] text-gray-500">
+                              Min {formatEth(plan.minAmount)}
+                            </Text>
+                            <Text className="text-[11px] text-gray-500 mt-1">
+                              Max {formatEth(plan.maxAmount)}
+                            </Text>
+                          </View>
                         </View>
 
-                        <TouchableOpacity
-                          onPress={() =>
-                            adjustAmount(
-                              plan,
-                              Math.max(plan.maxAmount * 0.01, 0.0001),
-                            )
-                          }
-                          className="w-10 h-10 rounded-full bg-[#FF8C42] items-center justify-center"
-                        >
-                          <Ionicons name="add" size={20} color="#fff" />
-                        </TouchableOpacity>
+                        <View className="flex-row items-center">
+                          <TouchableOpacity
+                            onPress={() =>
+                              changeAmountByStep(plan, -getAmountStep(plan))
+                            }
+                            className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
+                          >
+                            <Ionicons name="remove" size={20} color="#111827" />
+                          </TouchableOpacity>
+
+                          <View
+                            className={`flex-1 mx-3 rounded-3xl border px-4 py-3 ${focusedAmountPlanId === plan.id ? "border-gray-900 bg-white" : "border-gray-200 bg-gray-50"}`}
+                          >
+                            <Text className="text-[11px] uppercase tracking-wide text-gray-500">
+                              Enter amount
+                            </Text>
+                            <View className="flex-row items-center justify-between mt-1">
+                              <TextInput
+                                value={
+                                  selectedAmountDraftByPlan[plan.id] ??
+                                  formatLoanAmount(plan.minAmount)
+                                }
+                                onChangeText={(text) =>
+                                  updateAmountDraft(
+                                    plan.id,
+                                    sanitizeAmountInput(text),
+                                  )
+                                }
+                                onFocus={() => {
+                                  setFocusedAmountPlanId(plan.id);
+                                  if (!selectedAmountDraftByPlan[plan.id]) {
+                                    updateAmountDraft(
+                                      plan.id,
+                                      formatLoanAmount(plan.minAmount),
+                                    );
+                                  }
+                                }}
+                                onBlur={() => {
+                                  setFocusedAmountPlanId((current) =>
+                                    current === plan.id ? null : current,
+                                  );
+                                  commitAmountDraft(plan);
+                                }}
+                                keyboardType="decimal-pad"
+                                returnKeyType="done"
+                                placeholder="0.000000"
+                                placeholderTextColor="#9CA3AF"
+                                selectTextOnFocus
+                                className="flex-1 text-xl font-semibold text-gray-900 py-0"
+                              />
+                              <Text className="text-sm font-semibold text-gray-500 ml-3">
+                                ETH
+                              </Text>
+                            </View>
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() =>
+                              changeAmountByStep(plan, getAmountStep(plan))
+                            }
+                            className="w-12 h-12 rounded-full bg-[#FF8C42] items-center justify-center"
+                          >
+                            <Ionicons name="add" size={20} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text className="text-[11px] text-gray-500 mt-3 leading-4">
+                          Step {formatEth(getAmountStep(plan))} increments. Values outside the range are clamped when you leave the field.
+                        </Text>
                       </View>
 
                       <View className="mb-4">
