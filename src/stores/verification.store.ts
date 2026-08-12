@@ -4,6 +4,9 @@ import { create } from "zustand";
 // ─── Types ──────────────────────────────────────────────────
 
 export interface BasicInfoData {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   dateOfBirth: string;
   gender: string;
   civilStatus: string;
@@ -61,6 +64,9 @@ type VerificationState = {
 };
 
 const initialBasicInfo: BasicInfoData = {
+  firstName: "",
+  middleName: "",
+  lastName: "",
   dateOfBirth: "",
   gender: "",
   civilStatus: "",

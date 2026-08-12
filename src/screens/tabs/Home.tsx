@@ -1,24 +1,27 @@
+import type { LoanPlan } from "@/services/loan.service";
+import * as loanService from "@/services/loan.service";
+import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
+import * as marketService from "@/services/market.service";
+import type { WalletBalance } from "@/services/wallet.service";
+import * as walletService from "@/services/wallet.service";
+import { useVerificationStore } from "@/stores/verification.store";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useVerificationStore } from "@/stores/verification.store";
 import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { CustomAlert } from "../../components/alertbutton/CustomAlert";
-import * as loanService from "@/services/loan.service";
-import * as marketService from "@/services/market.service";
-import * as walletService from "@/services/wallet.service";
-import type { LoanPlan } from "@/services/loan.service";
-import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
-import type { WalletBalance } from "@/services/wallet.service";
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get("window").width;
@@ -34,11 +37,11 @@ export default function HomeScreen() {
     visible: boolean;
     title: string;
     message?: string;
-    buttons: Array<{
+    buttons: {
       text: string;
       onPress?: () => void;
       style?: "default" | "cancel" | "destructive";
-    }>;
+    }[];
     icon?: keyof typeof Ionicons.glyphMap;
     iconColor?: string;
   }>({
@@ -54,7 +57,9 @@ export default function HomeScreen() {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
   const [selectedDays, setSelectedDays] = useState(7);
-  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(
+    null,
+  );
 
   const fetchPlans = useCallback(async () => {
     setPlansLoading(true);
@@ -64,7 +69,7 @@ export default function HomeScreen() {
         setLoanPlans(result.data.slice(0, 2));
       }
     } catch (error) {
-      console.error('[Home] Fetch plans error:', error);
+      console.error("[Home] Fetch plans error:", error);
     } finally {
       setPlansLoading(false);
     }
@@ -83,7 +88,7 @@ export default function HomeScreen() {
         setPriceHistory(historyResult.data);
       }
     } catch (error) {
-      console.error('[Home] Fetch market error:', error);
+      console.error("[Home] Fetch market error:", error);
     }
   }, []);
 
@@ -94,18 +99,21 @@ export default function HomeScreen() {
   useEffect(() => {
     if (isVerified) {
       fetchPlans();
-      walletService.getBalances().then((res) => {
-        if (res.success && res.data && res.data.length > 0) {
-          const primary = res.data.find((w) => w.isPrimary) || res.data[0];
-          setWalletBalance(primary);
-        }
-      }).catch(() => {});
+      walletService
+        .getBalances()
+        .then((res) => {
+          if (res.success && res.data && res.data.length > 0) {
+            const primary = res.data.find((w) => w.isPrimary) || res.data[0];
+            setWalletBalance(primary);
+          }
+        })
+        .catch(() => {});
     }
   }, [isVerified, fetchPlans]);
 
   // Poll KYC status every 5s while PENDING_KYC
   useEffect(() => {
-    if (kycStatus === 'PENDING_KYC') {
+    if (kycStatus === "PENDING_KYC") {
       checkKycStatus();
       pollRef.current = setInterval(() => {
         checkKycStatus();
@@ -128,27 +136,30 @@ export default function HomeScreen() {
   ];
 
   // Build chart data from API history
-  const chartPoints = priceHistory.length > 0
-    ? priceHistory.map((p) => p.ethPricePHP)
-    : [0];
+  const chartPoints =
+    priceHistory.length > 0 ? priceHistory.map((p) => p.ethPricePHP) : [0];
 
   // Sample labels from history timestamps (show ~5 labels max)
   const labelStep = Math.max(1, Math.floor(priceHistory.length / 5));
-  const chartLabels = priceHistory.length > 0
-    ? priceHistory
-        .filter((_, i) => i % labelStep === 0)
-        .map((p) => {
-          const d = new Date(p.createdAt);
-          return selectedDays <= 1
-            ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : `${d.getMonth() + 1}/${d.getDate()}`;
-        })
-    : ["--"];
+  const chartLabels =
+    priceHistory.length > 0
+      ? priceHistory
+          .filter((_, i) => i % labelStep === 0)
+          .map((p) => {
+            const d = new Date(p.createdAt);
+            return selectedDays <= 1
+              ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : `${d.getMonth() + 1}/${d.getDate()}`;
+          })
+      : ["--"];
 
   // Pad if labels/data mismatch for chart library
-  const sampledData = priceHistory.length > 0
-    ? priceHistory.filter((_, i) => i % labelStep === 0).map((p) => p.ethPricePHP)
-    : [0];
+  const sampledData =
+    priceHistory.length > 0
+      ? priceHistory
+          .filter((_, i) => i % labelStep === 0)
+          .map((p) => p.ethPricePHP)
+      : [0];
 
   const chartData = {
     labels: chartLabels,
@@ -209,10 +220,14 @@ export default function HomeScreen() {
   const renderVerifyBanner = (() => {
     if (isVerified) return null;
 
-    if (kycStatus === 'PENDING_KYC') {
+    if (kycStatus === "PENDING_KYC") {
       return (
         <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex-row items-center">
-          <ActivityIndicator size="small" color="#D97706" style={{ marginRight: 12 }} />
+          <ActivityIndicator
+            size="small"
+            color="#D97706"
+            style={{ marginRight: 12 }}
+          />
           <View className="flex-1">
             <Text className="text-base font-semibold text-amber-900">
               Verification in progress
@@ -225,7 +240,7 @@ export default function HomeScreen() {
       );
     }
 
-    if (kycStatus === 'REJECTED') {
+    if (kycStatus === "REJECTED") {
       return (
         <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
           <View className="flex-1 mr-3">
@@ -311,7 +326,11 @@ export default function HomeScreen() {
                   </View>
                   <View className="absolute bottom-0 left-4 w-16 h-16 bg-blue-100 rounded-full items-center justify-center">
                     <View className="w-12 h-12 bg-blue-500 rounded-full items-center justify-center">
-                      <Ionicons name="shield-checkmark" size={24} color="#fff" />
+                      <Ionicons
+                        name="shield-checkmark"
+                        size={24}
+                        color="#fff"
+                      />
                     </View>
                   </View>
                 </View>
@@ -353,7 +372,10 @@ export default function HomeScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottom + TAB_BAR_HEIGHT,marginTop:20 }}
+        contentContainerStyle={{
+          paddingBottom: bottom + TAB_BAR_HEIGHT,
+          marginTop: 20,
+        }}
         contentInsetAdjustmentBehavior="never"
       >
         {/* Hero Section */}
@@ -409,7 +431,9 @@ export default function HomeScreen() {
                 </Text>
                 <Text
                   className={`text-xs font-medium ${
-                    priceData.changePercent24h >= 0 ? "text-green-600" : "text-red-500"
+                    priceData.changePercent24h >= 0
+                      ? "text-green-600"
+                      : "text-red-500"
                   }`}
                 >
                   {priceData.changePercent24h >= 0 ? "+" : ""}
@@ -496,13 +520,16 @@ export default function HomeScreen() {
                       })
                     }
                   >
-                    <View className={`w-1 h-16 ${index === 0 ? 'bg-green-500' : 'bg-red-500'} rounded-full mr-4`} />
+                    <View
+                      className={`w-1 h-16 ${index === 0 ? "bg-green-500" : "bg-red-500"} rounded-full mr-4`}
+                    />
                     <View className="flex-1">
                       <Text className="text-base font-semibold text-gray-900 mb-1">
                         {plan.name}
                       </Text>
                       <Text className="text-xs text-gray-500 mb-2">
-                        APR: {plan.interestRate}% / {plan.durationOptions[0]} days
+                        APR: {plan.interestRate}% / {plan.durationOptions[0]}{" "}
+                        days
                       </Text>
                       <Text className="text-lg font-bold text-gray-900">
                         {plan.maxAmount} ETH
@@ -515,7 +542,9 @@ export default function HomeScreen() {
                 ))
               ) : (
                 <View className="bg-gray-50 rounded-2xl p-4 items-center">
-                  <Text className="text-sm text-gray-500">No plans available</Text>
+                  <Text className="text-sm text-gray-500">
+                    No plans available
+                  </Text>
                 </View>
               )}
             </View>

@@ -206,6 +206,19 @@ export default function VerificationSummary() {
           </Text>
 
           <View className="space-y-4 mb-6">
+            {/* Display entered name if available */}
+            <InfoItem
+              icon="person-circle-outline"
+              label={
+                basicInfo.firstName ||
+                basicInfo.middleName ||
+                basicInfo.lastName
+                  ? `${basicInfo.firstName || ""} ${basicInfo.middleName || ""} ${basicInfo.lastName || ""}`
+                      .replace(/\s+/g, " ")
+                      .trim()
+                  : "Not set"
+              }
+            />
             <InfoItem
               icon="calendar-outline"
               label={basicInfo.dateOfBirth || "Not set"}
@@ -297,8 +310,8 @@ export default function VerificationSummary() {
           {faceMatchPassed === null && idDocuments.faceUri && (
             <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
               <Text className="text-sm text-yellow-800">
-                Face verification was not completed. Please go back and complete the
-                face recognition step.
+                Face verification was not completed. Please go back and complete
+                the face recognition step.
               </Text>
             </View>
           )}
@@ -408,7 +421,8 @@ function DocPreview({
   faceMatchScore?: number | null;
 }) {
   // Determine status icon for face photo row
-  const hasFaceResult = faceMatchPassed !== undefined && faceMatchPassed !== null;
+  const hasFaceResult =
+    faceMatchPassed !== undefined && faceMatchPassed !== null;
   const statusIcon = hasFaceResult
     ? faceMatchPassed
       ? { name: "checkmark-circle" as const, color: "#22C55E" }

@@ -612,7 +612,7 @@ export default function LoanPlans() {
                 <Text className="text-sm text-gray-500 text-center">
                   No loan plans available at the moment.
                 </Text>
-                <TouchableOpacity onPress={fetchPlans} className="mt-3">
+                <TouchableOpacity onPress={() => fetchPlans()} className="mt-3">
                   <Text className="text-sm text-[#FF8C42] font-medium">
                     Refresh
                   </Text>

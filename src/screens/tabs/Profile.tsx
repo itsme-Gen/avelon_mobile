@@ -1,20 +1,18 @@
+import { useAuthStore } from "@/stores/auth.store";
+import { useVerificationStore } from "@/stores/verification.store";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { useVerificationStore } from "@/stores/verification.store";
-import { useAuthStore } from "@/stores/auth.store";
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ProfileSettings from "../../screens/settings/ProfileSettings"
-import NotificationsScreen from "../../screens/settings/NotificationsScreen"
-import LoanHistoryScreen from "../../screens/settings/LoanHistoryScreen"
-import EditProfileScreen from "../../screens/settings/EditProfileScreen"
-import ChangePasswordScreen from "../../screens/settings/ChangePasswordScreen"
-import SupportScreen from "../../screens/settings/SupportScreen"
-import FAQsScreen from "../../screens/settings/FAQsScreen"
-import LegalScreen from "../../screens/settings/LegalScreen"
-
-
+import ChangePasswordScreen from "../../screens/settings/ChangePasswordScreen";
+import EditProfileScreen from "../../screens/settings/EditProfileScreen";
+import FAQsScreen from "../../screens/settings/FAQsScreen";
+import LegalScreen from "../../screens/settings/LegalScreen";
+import LoanHistoryScreen from "../../screens/settings/LoanHistoryScreen";
+import NotificationsScreen from "../../screens/settings/NotificationsScreen";
+import ProfileSettings from "../../screens/settings/ProfileSettings";
+import SupportScreen from "../../screens/settings/SupportScreen";
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
@@ -151,13 +149,18 @@ export default function Profile() {
       {/* Profile Screen */}
       <View className="flex-1">
         {/* Profile Info */}
-        <TouchableOpacity onPress={() => setShowEditProfile(true)} className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6">
+        <TouchableOpacity
+          onPress={() => setShowEditProfile(true)}
+          className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6"
+        >
           <View className="flex-row items-center gap-3">
             <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
               <Ionicons name="person" size={24} color="#9CA3AF" />
             </View>
             <View>
-              <Text className="text-base font-semibold">{user?.name || "User"}</Text>
+              <Text className="text-base font-semibold">
+                {user?.name || "User"}
+              </Text>
               <Text className="text-sm text-gray-500">{user?.email || ""}</Text>
             </View>
           </View>
@@ -186,11 +189,7 @@ export default function Profile() {
             <Ionicons name="wallet-outline" size={24} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity className="items-center">
-            <Ionicons
-              name="document-text-outline"
-              size={24}
-              color="#9CA3AF"
-            />
+            <Ionicons name="document-text-outline" size={24} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity className="items-center">
             <Ionicons name="newspaper-outline" size={24} color="#9CA3AF" />

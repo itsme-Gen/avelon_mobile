@@ -1,27 +1,27 @@
+import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import { useWalletConnect } from "@/hooks/useWalletConnect";
+import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
+import * as marketService from "@/services/market.service";
+import type { WalletBalance, WalletInfo } from "@/services/wallet.service";
+import * as walletService from "@/services/wallet.service";
+import { useVerificationStore } from "@/stores/verification.store";
+import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import { Ionicons } from "@expo/vector-icons";
+import { useAppKit } from "@reown/appkit-react-native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { useVerificationStore } from "@/stores/verification.store";
 import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CustomAlert } from "@/components/alertbutton/CustomAlert";
-import { useWalletConnect } from "@/hooks/useWalletConnect";
-import { useAppKit } from "@reown/appkit-react-native";
 import { useDisconnect } from "wagmi";
-import { getWalletErrorMessage } from "@/utils/wallet-errors";
-import * as walletService from "@/services/wallet.service";
-import * as marketService from "@/services/market.service";
-import type { WalletInfo, WalletBalance } from "@/services/wallet.service";
-import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
 
 const screenWidth = Dimensions.get("window").width;
 const scrollHPadding = 20;
@@ -45,7 +45,11 @@ export default function WalletScreen() {
   const router = useRouter();
 
   // WalletConnect hooks
-  const { address: wcAddress, isConnected: wcConnected, signVerificationMessage } = useWalletConnect();
+  const {
+    address: wcAddress,
+    isConnected: wcConnected,
+    signVerificationMessage,
+  } = useWalletConnect();
   const { open: openAppKit } = useAppKit();
   const { disconnectAsync } = useDisconnect();
 
@@ -59,7 +63,11 @@ export default function WalletScreen() {
     visible: boolean;
     title: string;
     message?: string;
-    buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }>;
+    buttons: {
+      text: string;
+      onPress?: () => void;
+      style?: "default" | "cancel" | "destructive";
+    }[];
     icon?: keyof typeof Ionicons.glyphMap;
     iconColor?: string;
   }>({ visible: false, title: "", buttons: [] });
@@ -76,7 +84,8 @@ export default function WalletScreen() {
         walletService.getBalances(),
       ]);
       if (walletsRes.success && walletsRes.data) setWallets(walletsRes.data);
-      if (balancesRes.success && balancesRes.data) setBalances(balancesRes.data);
+      if (balancesRes.success && balancesRes.data)
+        setBalances(balancesRes.data);
     } catch (error) {
       console.error("[Wallet] Fetch error:", error);
     } finally {
@@ -91,7 +100,8 @@ export default function WalletScreen() {
         marketService.getPriceHistory(1),
       ]);
       if (priceRes.success && priceRes.data) setPriceData(priceRes.data);
-      if (historyRes.success && historyRes.data) setPriceHistory(historyRes.data);
+      if (historyRes.success && historyRes.data)
+        setPriceHistory(historyRes.data);
     } catch (error) {
       console.error("[Wallet] Market fetch error:", error);
     }
@@ -107,7 +117,7 @@ export default function WalletScreen() {
     if (!wcConnected || !wcAddress) return;
 
     const alreadyRegistered = wallets.some(
-      (w) => w.address.toLowerCase() === wcAddress.toLowerCase()
+      (w) => w.address.toLowerCase() === wcAddress.toLowerCase(),
     );
     if (alreadyRegistered) return;
 
@@ -117,17 +127,21 @@ export default function WalletScreen() {
         // Step 1: Request nonce from backend
         const connectRes = await walletService.connectWallet(wcAddress);
         if (!connectRes.success || !connectRes.data?.message) {
-          throw new Error(connectRes.error || "Failed to get verification message");
+          throw new Error(
+            connectRes.error || "Failed to get verification message",
+          );
         }
 
         // Step 2: Sign the nonce message with WalletConnect
-        const signature = await signVerificationMessage(connectRes.data.message);
+        const signature = await signVerificationMessage(
+          connectRes.data.message,
+        );
 
         // Step 3: Verify signature with backend
         const verifyRes = await walletService.verifyWallet(
           wcAddress,
           signature,
-          connectRes.data.message
+          connectRes.data.message,
         );
         if (!verifyRes.success) {
           throw new Error(verifyRes.error || "Wallet verification failed");
@@ -138,7 +152,8 @@ export default function WalletScreen() {
         setAlert({
           visible: true,
           title: "Wallet Connected",
-          message: "Your wallet has been connected and verified via WalletConnect.",
+          message:
+            "Your wallet has been connected and verified via WalletConnect.",
           buttons: [{ text: "OK" }],
           icon: "checkmark-circle",
           iconColor: "#10B981",
@@ -154,7 +169,9 @@ export default function WalletScreen() {
           iconColor: "#EF4444",
         });
         // Disconnect WalletConnect if backend registration fails
-        try { await disconnectAsync(); } catch {}
+        try {
+          await disconnectAsync();
+        } catch {}
       } finally {
         setIsConnecting(false);
       }
@@ -219,7 +236,9 @@ export default function WalletScreen() {
           onPress: async () => {
             // Disconnect WalletConnect session if active
             if (wcConnected) {
-              try { await disconnectAsync(); } catch {}
+              try {
+                await disconnectAsync();
+              } catch {}
             }
             const result = await walletService.removeWallet(primaryWallet.id);
             if (result.success) {
@@ -247,20 +266,32 @@ export default function WalletScreen() {
     if (priceHistory.length < 2) {
       return {
         labels: ["--"],
-        datasets: [{ data: [0], color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`, strokeWidth: 2.5 }],
+        datasets: [
+          {
+            data: [0],
+            color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`,
+            strokeWidth: 2.5,
+          },
+        ],
       };
     }
-    const sampled = priceHistory.filter((_, i) => i % Math.max(1, Math.floor(priceHistory.length / 6)) === 0).slice(0, 6);
+    const sampled = priceHistory
+      .filter(
+        (_, i) => i % Math.max(1, Math.floor(priceHistory.length / 6)) === 0,
+      )
+      .slice(0, 6);
     return {
       labels: sampled.map((p) => {
         const d = new Date(p.createdAt);
         return `${d.getHours()}h`;
       }),
-      datasets: [{
-        data: sampled.map((p) => p.ethPricePHP),
-        color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`,
-        strokeWidth: 2.5,
-      }],
+      datasets: [
+        {
+          data: sampled.map((p) => p.ethPricePHP),
+          color: (opacity = 1) => `rgba(46, 169, 150, ${opacity})`,
+          strokeWidth: 2.5,
+        },
+      ],
     };
   })();
 
@@ -374,7 +405,7 @@ export default function WalletScreen() {
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingBottom: 140,
-            marginTop:25
+            marginTop: 25,
           }}
         >
           {renderVerifyBanner}
@@ -399,10 +430,15 @@ export default function WalletScreen() {
               />
               <View className="flex-row gap-3">
                 <TouchableOpacity
-                  onPress={() => { setShowManualConnect(false); setAddressInput(""); }}
+                  onPress={() => {
+                    setShowManualConnect(false);
+                    setAddressInput("");
+                  }}
                   className="flex-1 bg-gray-100 rounded-full py-3 items-center"
                 >
-                  <Text className="text-sm font-semibold text-gray-700">Cancel</Text>
+                  <Text className="text-sm font-semibold text-gray-700">
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleManualConnect}
@@ -412,7 +448,9 @@ export default function WalletScreen() {
                   {isConnecting ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text className="text-sm font-semibold text-white">Connect</Text>
+                    <Text className="text-sm font-semibold text-white">
+                      Connect
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -444,10 +482,18 @@ export default function WalletScreen() {
                 alignItems: "center",
               }}
             >
-              <Ionicons name="wallet-outline" size={48} color="#fff" style={{ marginBottom: 12 }} />
-              <Text className="text-white text-lg font-bold mb-2">No Wallet Connected</Text>
+              <Ionicons
+                name="wallet-outline"
+                size={48}
+                color="#fff"
+                style={{ marginBottom: 12 }}
+              />
+              <Text className="text-white text-lg font-bold mb-2">
+                No Wallet Connected
+              </Text>
               <Text className="text-[#ffd7c1] text-sm text-center mb-5">
-                Connect your Ethereum wallet to view balances and apply for loans.
+                Connect your Ethereum wallet to view balances and apply for
+                loans.
               </Text>
 
               {/* Primary: WalletConnect */}
@@ -464,13 +510,13 @@ export default function WalletScreen() {
                   marginBottom: 12,
                 }}
               >
-                <Text className="text-white font-semibold text-base">Connect Wallet</Text>
+                <Text className="text-white font-semibold text-base">
+                  Connect Wallet
+                </Text>
               </TouchableOpacity>
 
               {/* Fallback: Manual address entry */}
-              <TouchableOpacity
-                onPress={() => setShowManualConnect(true)}
-              >
+              <TouchableOpacity onPress={() => setShowManualConnect(true)}>
                 <Text className="text-[#ffeede] text-xs underline">
                   Or enter address manually
                 </Text>
@@ -478,239 +524,270 @@ export default function WalletScreen() {
             </View>
           ) : (
             <>
-          {/* Balance Card */}
-          <View
-            style={{
-              backgroundColor: "#f8893c",
-              borderRadius: 28,
-              padding: 18,
-              marginBottom: 16,
-              overflow: "hidden",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.18,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-          >
-            <View
-              style={{
-                position: "absolute",
-                bottom: -70,
-                left: -40,
-                width: 220,
-                height: 220,
-                borderRadius: 110,
-                backgroundColor: "rgba(255,255,255,0.07)",
-              }}
-            />
+              {/* Balance Card */}
+              <View
+                style={{
+                  backgroundColor: "#f8893c",
+                  borderRadius: 28,
+                  padding: 18,
+                  marginBottom: 16,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.18,
+                  shadowRadius: 12,
+                  elevation: 8,
+                }}
+              >
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: -70,
+                    left: -40,
+                    width: 220,
+                    height: 220,
+                    borderRadius: 110,
+                    backgroundColor: "rgba(255,255,255,0.07)",
+                  }}
+                />
 
-            <View
-              style={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: primaryWallet?.isVerified
-                  ? "rgba(16,185,129,0.2)"
-                  : "rgba(255,255,255,0.18)",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: primaryWallet?.isVerified
-                  ? "rgba(16,185,129,0.4)"
-                  : "rgba(255,255,255,0.25)",
-              }}
-            >
-              <Text className={`text-[11px] font-semibold ${primaryWallet?.isVerified ? "text-green-100" : "text-[#ffeede]"}`}>
-                {primaryWallet?.isVerified ? "Verified" : "Pending"}
-              </Text>
-            </View>
-
-            <View className="flex-row justify-between items-start">
-              <View className="flex-1">
-                <Text className="text-[#ffe7d4] text-xs font-semibold uppercase mb-1">
-                  Balance
-                </Text>
-                <Text className="text-white text-[28px] font-extrabold leading-tight mb-1">
-                  {primaryBalance?.balance ? `${parseFloat(primaryBalance.balance).toFixed(6)} ETH` : "-- ETH"}
-                </Text>
-                {priceData && primaryBalance?.balance && (
-                  <Text className="text-[#ffd7c1] text-sm font-semibold">
-                    ₱ {(parseFloat(primaryBalance.balance) * priceData.ethPricePHP).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 12,
+                    right: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    backgroundColor: primaryWallet?.isVerified
+                      ? "rgba(16,185,129,0.2)"
+                      : "rgba(255,255,255,0.18)",
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: primaryWallet?.isVerified
+                      ? "rgba(16,185,129,0.4)"
+                      : "rgba(255,255,255,0.25)",
+                  }}
+                >
+                  <Text
+                    className={`text-[11px] font-semibold ${primaryWallet?.isVerified ? "text-green-100" : "text-[#ffeede]"}`}
+                  >
+                    {primaryWallet?.isVerified ? "Verified" : "Pending"}
                   </Text>
+                </View>
+
+                <View className="flex-row justify-between items-start">
+                  <View className="flex-1">
+                    <Text className="text-[#ffe7d4] text-xs font-semibold uppercase mb-1">
+                      Balance
+                    </Text>
+                    <Text className="text-white text-[28px] font-extrabold leading-tight mb-1">
+                      {primaryBalance?.balance
+                        ? `${parseFloat(primaryBalance.balance).toFixed(6)} ETH`
+                        : "-- ETH"}
+                    </Text>
+                    {priceData && primaryBalance?.balance && (
+                      <Text className="text-[#ffd7c1] text-sm font-semibold">
+                        ₱{" "}
+                        {(
+                          parseFloat(primaryBalance.balance) *
+                          priceData.ethPricePHP
+                        ).toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </Text>
+                    )}
+                    <Text className="text-[#ffe7d4] text-[10px] mt-2">
+                      {primaryWallet
+                        ? `${primaryWallet.address.slice(0, 6)}...${primaryWallet.address.slice(-4)}`
+                        : ""}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    marginTop: 18,
+                    gap: 12,
+                  }}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setIsLoading(true);
+                      fetchWalletData();
+                      fetchMarketData();
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: "rgba(255,255,255,0.18)",
+                      borderRadius: 18,
+                      paddingVertical: 12,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.24)",
+                    }}
+                  >
+                    <Ionicons name="refresh" size={22} color="#fff" />
+                    <Text className="text-white font-semibold text-[13px] mt-2">
+                      Refresh
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={handleDisconnect}
+                    style={{
+                      flex: 1,
+                      backgroundColor: "rgba(255,255,255,0.18)",
+                      borderRadius: 18,
+                      paddingVertical: 12,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.24)",
+                    }}
+                  >
+                    <Ionicons name="power" size={22} color="#fff" />
+                    <Text className="text-white font-semibold text-[13px] mt-2">
+                      Disconnect
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Overview */}
+              <View
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: 18,
+                  padding: 16,
+                  marginBottom: 16,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.05,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowRadius: 8,
+                  elevation: 3,
+                }}
+              >
+                <Text className="text-[11px] font-semibold text-[#9ca3af] uppercase mb-3">
+                  Wallet Details
+                </Text>
+
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-[13px] text-[#6b7280]">Address</Text>
+                  <Text className="text-[13px] font-medium text-[#111827]">
+                    {primaryWallet
+                      ? `${primaryWallet.address.slice(0, 10)}...${primaryWallet.address.slice(-6)}`
+                      : "--"}
+                  </Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-[13px] text-[#6b7280]">Status</Text>
+                  <Text
+                    className={`text-[13px] font-medium ${primaryWallet?.isVerified ? "text-green-600" : "text-yellow-600"}`}
+                  >
+                    {primaryWallet?.isVerified
+                      ? "Verified"
+                      : "Pending Verification"}
+                  </Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-[13px] text-[#6b7280]">
+                    Connected Wallets
+                  </Text>
+                  <Text className="text-[13px] font-medium text-[#111827]">
+                    {wallets.length}
+                  </Text>
+                </View>
+                {wcConnected && (
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[13px] text-[#6b7280]">
+                      WalletConnect
+                    </Text>
+                    <Text className="text-[13px] font-medium text-green-600">
+                      Active
+                    </Text>
+                  </View>
                 )}
-                <Text className="text-[#ffe7d4] text-[10px] mt-2">
-                  {primaryWallet ? `${primaryWallet.address.slice(0, 6)}...${primaryWallet.address.slice(-4)}` : ""}
-                </Text>
               </View>
 
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                marginTop: 18,
-                gap: 12,
-              }}
-            >
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => { setIsLoading(true); fetchWalletData(); fetchMarketData(); }}
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  borderRadius: 18,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.24)",
-                }}
-              >
-                <Ionicons name="refresh" size={22} color="#fff" />
-                <Text className="text-white font-semibold text-[13px] mt-2">
-                  Refresh
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleDisconnect}
-                style={{
-                  flex: 1,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  borderRadius: 18,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.24)",
-                }}
-              >
-                <Ionicons name="power" size={22} color="#fff" />
-                <Text className="text-white font-semibold text-[13px] mt-2">
-                  Disconnect
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Overview */}
-          <View
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 18,
-              padding: 16,
-              marginBottom: 16,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowOffset: { width: 0, height: 4 },
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            <Text className="text-[11px] font-semibold text-[#9ca3af] uppercase mb-3">
-              Wallet Details
-            </Text>
-
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-[13px] text-[#6b7280]">Address</Text>
-              <Text className="text-[13px] font-medium text-[#111827]">
-                {primaryWallet ? `${primaryWallet.address.slice(0, 10)}...${primaryWallet.address.slice(-6)}` : "--"}
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-[13px] text-[#6b7280]">Status</Text>
-              <Text className={`text-[13px] font-medium ${primaryWallet?.isVerified ? "text-green-600" : "text-yellow-600"}`}>
-                {primaryWallet?.isVerified ? "Verified" : "Pending Verification"}
-              </Text>
-            </View>
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-[13px] text-[#6b7280]">Connected Wallets</Text>
-              <Text className="text-[13px] font-medium text-[#111827]">{wallets.length}</Text>
-            </View>
-            {wcConnected && (
-              <View className="flex-row items-center justify-between">
-                <Text className="text-[13px] text-[#6b7280]">WalletConnect</Text>
-                <Text className="text-[13px] font-medium text-green-600">Active</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Analytics */}
-          <Text className="text-[11px] font-semibold text-[#9ca3af] uppercase mb-3">
-            Analytics
-          </Text>
-          <View
-            style={{
-              backgroundColor: "#ffffff",
-              borderRadius: 18,
-              padding: 14,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowOffset: { width: 0, height: 4 },
-              shadowRadius: 8,
-              elevation: 3,
-            }}
-          >
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-[15px] font-semibold text-[#111827]">
-                ETH Price Volatility
+              {/* Analytics */}
+              <Text className="text-[11px] font-semibold text-[#9ca3af] uppercase mb-3">
+                Analytics
               </Text>
               <View
                 style={{
-                  backgroundColor: "rgba(248,140,60,0.12)",
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: "rgba(248,140,60,0.24)",
+                  backgroundColor: "#ffffff",
+                  borderRadius: 18,
+                  padding: 14,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.05,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowRadius: 8,
+                  elevation: 3,
                 }}
               >
-                <Text className="text-[11px] font-semibold text-[#f58a2e] uppercase">
-                  Predictor
-                </Text>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-[15px] font-semibold text-[#111827]">
+                    ETH Price Volatility
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: "rgba(248,140,60,0.12)",
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: "rgba(248,140,60,0.24)",
+                    }}
+                  >
+                    <Text className="text-[11px] font-semibold text-[#f58a2e] uppercase">
+                      Predictor
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="items-center">
+                  <LineChart
+                    data={chartData}
+                    width={chartWidth}
+                    height={190}
+                    chartConfig={chartConfig}
+                    bezier
+                    style={{
+                      marginVertical: 4,
+                      borderRadius: 12,
+                      alignSelf: "center",
+                      paddingRight: chartPaddingRight,
+                    }}
+                    withInnerLines={true}
+                    withOuterLines={false}
+                    withVerticalLines={true}
+                    withHorizontalLines={true}
+                    withDots={true}
+                    withShadow={true}
+                    segments={4}
+                  />
+                </View>
+
+                <View className="flex-row items-center justify-center mt-2">
+                  <View
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: "#2eaa96",
+                      marginRight: 8,
+                    }}
+                  />
+                  <Text className="text-[#6b7280] text-[11px] font-medium">
+                    {priceData
+                      ? `Current: ₱${priceData.ethPricePHP.toLocaleString()}`
+                      : "Loading..."}
+                  </Text>
+                </View>
               </View>
-            </View>
-
-            <View className="items-center">
-              <LineChart
-                data={chartData}
-                width={chartWidth}
-                height={190}
-                chartConfig={chartConfig}
-                bezier
-                style={{
-                  marginVertical: 4,
-                  borderRadius: 12,
-                  alignSelf: "center",
-                  paddingRight: chartPaddingRight,
-                }}
-                withInnerLines={true}
-                withOuterLines={false}
-                withVerticalLines={true}
-                withHorizontalLines={true}
-                withDots={true}
-                withShadow={true}
-                segments={4}
-              />
-            </View>
-
-            <View className="flex-row items-center justify-center mt-2">
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#2eaa96",
-                  marginRight: 8,
-                }}
-              />
-              <Text className="text-[#6b7280] text-[11px] font-medium">
-                {priceData ? `Current: ₱${priceData.ethPricePHP.toLocaleString()}` : "Loading..."}
-              </Text>
-            </View>
-          </View>
-          </>
+            </>
           )}
         </ScrollView>
 

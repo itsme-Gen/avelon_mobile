@@ -1,20 +1,23 @@
+import {
+    PagerView,
+    type PagerViewOnPageSelectedEvent,
+} from "@/components/PagerViewWrapper";
+import type { Loan, LoanTransaction } from "@/services/loan.service";
+import * as loanService from "@/services/loan.service";
+import { useVerificationStore } from "@/stores/verification.store";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useVerificationStore } from "@/stores/verification.store";
-import * as loanService from "@/services/loan.service";
-import type { Loan, LoanTransaction } from "@/services/loan.service";
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { PagerView, type PagerViewOnPageSelectedEvent } from "@/components/PagerViewWrapper";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING_COLLATERAL: "bg-yellow-400",
@@ -46,25 +49,38 @@ const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string }> = {
   EXPIRED: { bg: "bg-orange-100", text: "text-orange-700" },
 };
 
-const TX_TYPE_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }> = {
-  COLLATERAL_DEPOSIT: { icon: "arrow-down-circle", label: "Collateral Deposit", color: "#3B82F6" },
-  LOAN_DISBURSEMENT: { icon: "wallet", label: "Loan Disbursement", color: "#10B981" },
+const TX_TYPE_CONFIG: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }
+> = {
+  COLLATERAL_DEPOSIT: {
+    icon: "arrow-down-circle",
+    label: "Collateral Deposit",
+    color: "#3B82F6",
+  },
+  LOAN_DISBURSEMENT: {
+    icon: "wallet",
+    label: "Loan Disbursement",
+    color: "#10B981",
+  },
   REPAYMENT: { icon: "arrow-up-circle", label: "Repayment", color: "#8B5CF6" },
-  COLLATERAL_TOPUP: { icon: "add-circle", label: "Collateral Top-up", color: "#3B82F6" },
-  COLLATERAL_RETURN: { icon: "return-down-back", label: "Collateral Return", color: "#10B981" },
+  COLLATERAL_TOPUP: {
+    icon: "add-circle",
+    label: "Collateral Top-up",
+    color: "#3B82F6",
+  },
+  COLLATERAL_RETURN: {
+    icon: "return-down-back",
+    label: "Collateral Return",
+    color: "#10B981",
+  },
   LIQUIDATION: { icon: "warning", label: "Liquidation", color: "#EF4444" },
   FEE_PAYMENT: { icon: "receipt", label: "Fee Payment", color: "#F59E0B" },
 };
 
 // ─── Loan Detail View ──────────────────────────────────────
 
-function LoanDetailView({
-  loan,
-  onBack,
-}: {
-  loan: Loan;
-  onBack: () => void;
-}) {
+function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
   const router = useRouter();
   const [transactions, setTransactions] = useState<LoanTransaction[]>([]);
   const [isLoadingTx, setIsLoadingTx] = useState(true);
@@ -80,15 +96,20 @@ function LoanDetailView({
     })();
   }, [loan.id]);
 
-  const badgeStyle = STATUS_BADGE_STYLES[loan.status] ?? { bg: "bg-gray-100", text: "text-gray-600" };
-  const totalOwed = (
+  const badgeStyle = STATUS_BADGE_STYLES[loan.status] ?? {
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+  };
+  const totalOwed =
     parseFloat(loan.principalOwed || "0") +
     parseFloat(loan.interestOwed || "0") +
-    parseFloat(loan.feesOwed || "0")
-  );
+    parseFloat(loan.feesOwed || "0");
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={["right", "bottom", "left"]}>
+    <SafeAreaView
+      className="flex-1 bg-gray-50"
+      edges={["right", "bottom", "left"]}
+    >
       {/* Header */}
       <View className="flex-row items-center px-5 py-4 bg-white border-b border-gray-100">
         <TouchableOpacity
@@ -97,7 +118,9 @@ function LoanDetailView({
         >
           <Ionicons name="arrow-back" size={20} color="#000" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 ml-3">Loan Details</Text>
+        <Text className="text-lg font-bold text-gray-900 ml-3">
+          Loan Details
+        </Text>
       </View>
 
       <ScrollView
@@ -128,16 +151,32 @@ function LoanDetailView({
           <View className="border-t border-gray-100 pt-4">
             <DetailRow label="Duration" value={`${loan.duration} days`} />
             <DetailRow label="Interest Rate" value={`${loan.interestRate}%`} />
-            <DetailRow label="Collateral Required" value={`${loan.collateralRequired} ETH`} />
-            <DetailRow label="Collateral Deposited" value={`${loan.collateralDeposited} ETH`} />
+            <DetailRow
+              label="Collateral Required"
+              value={`${loan.collateralRequired} ETH`}
+            />
+            <DetailRow
+              label="Collateral Deposited"
+              value={`${loan.collateralDeposited} ETH`}
+            />
             {loan.dueDate && (
-              <DetailRow label="Due Date" value={new Date(loan.dueDate).toLocaleDateString()} />
+              <DetailRow
+                label="Due Date"
+                value={new Date(loan.dueDate).toLocaleDateString()}
+              />
             )}
             {totalOwed > 0 && (
-              <DetailRow label="Total Owed" value={`${totalOwed.toFixed(6)} ETH`} bold />
+              <DetailRow
+                label="Total Owed"
+                value={`${totalOwed.toFixed(6)} ETH`}
+                bold
+              />
             )}
             {loan.repaidAt && (
-              <DetailRow label="Repaid At" value={new Date(loan.repaidAt).toLocaleDateString()} />
+              <DetailRow
+                label="Repaid At"
+                value={new Date(loan.repaidAt).toLocaleDateString()}
+              />
             )}
           </View>
 
@@ -234,14 +273,20 @@ function LoanDetailView({
                   <View
                     key={tx.id}
                     className={`flex-row items-center py-3 ${
-                      index < transactions.length - 1 ? "border-b border-gray-100" : ""
+                      index < transactions.length - 1
+                        ? "border-b border-gray-100"
+                        : ""
                     }`}
                   >
                     <View
                       className="w-9 h-9 rounded-full mr-3 justify-center items-center"
                       style={{ backgroundColor: config.color + "1A" }}
                     >
-                      <Ionicons name={config.icon} size={18} color={config.color} />
+                      <Ionicons
+                        name={config.icon}
+                        size={18}
+                        color={config.color}
+                      />
                     </View>
                     <View className="flex-1">
                       <Text className="text-sm font-semibold text-gray-900">
@@ -249,10 +294,16 @@ function LoanDetailView({
                       </Text>
                       <Text className="text-xs text-gray-400">
                         {new Date(tx.createdAt).toLocaleDateString()}{" "}
-                        {new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(tx.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </Text>
                       {tx.txHash && (
-                        <Text className="text-[10px] text-gray-300 mt-0.5" numberOfLines={1}>
+                        <Text
+                          className="text-[10px] text-gray-300 mt-0.5"
+                          numberOfLines={1}
+                        >
                           {tx.txHash}
                         </Text>
                       )}
@@ -262,9 +313,13 @@ function LoanDetailView({
                         {tx.amount} ETH
                       </Text>
                       {tx.confirmed ? (
-                        <Text className="text-[10px] text-green-600">Confirmed</Text>
+                        <Text className="text-[10px] text-green-600">
+                          Confirmed
+                        </Text>
                       ) : (
-                        <Text className="text-[10px] text-yellow-600">Pending</Text>
+                        <Text className="text-[10px] text-yellow-600">
+                          Pending
+                        </Text>
                       )}
                     </View>
                   </View>
@@ -278,11 +333,21 @@ function LoanDetailView({
   );
 }
 
-function DetailRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+}) {
   return (
     <View className="flex-row justify-between mb-2.5">
       <Text className="text-sm text-gray-500">{label}</Text>
-      <Text className={`text-sm ${bold ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}>
+      <Text
+        className={`text-sm ${bold ? "font-bold text-gray-900" : "font-medium text-gray-700"}`}
+      >
         {value}
       </Text>
     </View>
@@ -329,10 +394,10 @@ export default function DocumentsScreen() {
 
   // Split loans into active and completed for each tab
   const activeLoans = loans.filter(
-    (l) => !["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status)
+    (l) => !["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status),
   );
   const completedLoans = loans.filter((l) =>
-    ["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status)
+    ["REPAID", "LIQUIDATED", "CANCELLED", "EXPIRED"].includes(l.status),
   );
 
   const handleTabPress = (index: number) => {
@@ -381,7 +446,10 @@ export default function DocumentsScreen() {
 
   if (showVerification) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
+      <SafeAreaView
+        className="flex-1 bg-white"
+        edges={["right", "bottom", "left"]}
+      >
         <View className="flex-1 bg-white">
           <TouchableOpacity
             onPress={() => setShowVerification(false)}
@@ -443,13 +511,16 @@ export default function DocumentsScreen() {
       className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
       activeOpacity={0.7}
     >
-      <View className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`} />
+      <View
+        className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`}
+      />
       <View className="flex-1">
         <Text className="text-base font-semibold text-gray-900 mb-1">
           {loan.plan?.name ?? "Loan"}
         </Text>
         <Text className="text-xs text-gray-500 mb-1">
-          {STATUS_LABELS[loan.status] ?? loan.status} · {new Date(loan.createdAt).toLocaleDateString()}
+          {STATUS_LABELS[loan.status] ?? loan.status} ·{" "}
+          {new Date(loan.createdAt).toLocaleDateString()}
         </Text>
         <Text className="text-lg font-bold text-gray-900">
           {loan.principal} ETH
@@ -468,7 +539,8 @@ export default function DocumentsScreen() {
         className="bg-gray-50 rounded-2xl p-4 mb-3 flex-row items-center"
         activeOpacity={0.7}
       >
-        <View className="w-10 h-10 rounded-full mr-3 justify-center items-center"
+        <View
+          className="w-10 h-10 rounded-full mr-3 justify-center items-center"
           style={{ backgroundColor: isRepaid ? "#D1FAE5" : "#FEE2E2" }}
         >
           <Ionicons
@@ -498,7 +570,10 @@ export default function DocumentsScreen() {
   // ─── Main Render ─────────────────────────────────────────
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["right", "bottom", "left"]}>
+    <SafeAreaView
+      className="flex-1 bg-white"
+      edges={["right", "bottom", "left"]}
+    >
       {renderVerifyBanner}
 
       {/* Tab Navigation (always visible) */}
@@ -548,7 +623,11 @@ export default function DocumentsScreen() {
                 </View>
               ) : activeLoans.length === 0 ? (
                 <View className="flex-1 items-center justify-center px-8">
-                  <Ionicons name="document-text-outline" size={48} color="#D1D5DB" />
+                  <Ionicons
+                    name="document-text-outline"
+                    size={48}
+                    color="#D1D5DB"
+                  />
                   <Text className="text-sm text-gray-400 mt-3 text-center">
                     No active loans
                   </Text>

@@ -1,20 +1,20 @@
+import { WalletProvider } from "@/providers/WalletProvider";
+import { setupAndroidChannel } from "@/services/notification.service";
+import {
+    Syne_400Regular,
+    Syne_500Medium,
+    Syne_600SemiBold,
+    Syne_700Bold,
+    Syne_800ExtraBold,
+} from "@expo-google-fonts/syne";
 import "@walletconnect/react-native-compat"; // Must be FIRST — patches Object.entries/keys and Keychain for WalletConnect
-import "react-native-get-random-values"; // Crypto polyfill for WalletConnect
+import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
 import { LogBox, StyleSheet, Text, TextInput } from "react-native";
-import * as Notifications from "expo-notifications";
-import { useFonts } from "expo-font";
-import {
-  Syne_400Regular,
-  Syne_500Medium,
-  Syne_600SemiBold,
-  Syne_700Bold,
-  Syne_800ExtraBold,
-} from "@expo-google-fonts/syne";
-import { setupAndroidChannel } from "@/services/notification.service";
-import { WalletProvider } from "@/providers/WalletProvider";
+import "react-native-get-random-values"; // Crypto polyfill for WalletConnect
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
@@ -45,7 +45,9 @@ export default function RootLayout() {
     Syne_700Bold,
     Syne_800ExtraBold,
   });
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const notificationListener = useRef<Notifications.EventSubscription | null>(
+    null,
+  );
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
@@ -54,20 +56,20 @@ export default function RootLayout() {
     // Ensure every Text/TextInput gets Syne by default before we start
     const injectDefaultFont = (component: typeof Text | typeof TextInput) => {
       const base = { fontFamily: "Syne_400Regular" };
-      component.defaultProps = component.defaultProps ?? {};
-      const existing = component.defaultProps.style;
-      component.defaultProps.style = [base, existing].filter(Boolean);
+      (component as any).defaultProps = (component as any).defaultProps ?? {};
+      const existing = (component as any).defaultProps.style;
+      (component as any).defaultProps.style = [base, existing].filter(Boolean);
     };
 
     injectDefaultFont(Text);
     injectDefaultFont(TextInput);
 
     const applySyneFont = (component: typeof Text | typeof TextInput) => {
-      if (component.defaultProps == null) {
-        component.defaultProps = {};
+      if ((component as any).defaultProps == null) {
+        (component as any).defaultProps = {};
       }
-      const existing = component.defaultProps.style;
-      component.defaultProps.style = [
+      const existing = (component as any).defaultProps.style;
+      (component as any).defaultProps.style = [
         { fontFamily: "Syne_400Regular" },
         existing,
       ].filter(Boolean);
@@ -108,16 +110,21 @@ export default function RootLayout() {
     setupAndroidChannel();
 
     // Listener: notification received while app is in foreground
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('[Notification received]', notification.request.content.title);
-    });
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log(
+          "[Notification received]",
+          notification.request.content.title,
+        );
+      });
 
     // Listener: user taps on a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      console.log('[Notification tapped]', data);
-      // TODO: navigate based on data.type (e.g. loan update, repayment reminder)
-    });
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        console.log("[Notification tapped]", data);
+        // TODO: navigate based on data.type (e.g. loan update, repayment reminder)
+      });
 
     return () => {
       notificationListener.current?.remove();

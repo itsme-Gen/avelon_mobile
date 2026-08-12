@@ -1,11 +1,18 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState, useEffect, useMemo } from "react";
+import { useVerificationStore } from "@/stores/verification.store";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { ProgressDots } from "../../components/progressdot/ProgressDot";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomDropdown } from "../../components/customDropdown/CustomDropdown";
 import { DatePicker } from "../../components/datePicker/DatePicker";
-import { useVerificationStore } from "@/stores/verification.store";
+import { ProgressDots } from "../../components/progressdot/ProgressDot";
 
 // Types
 interface Location {
@@ -22,10 +29,10 @@ interface DropdownOption {
 const API_OPTIONS = {
   // Option 1: PSGC Cloud (Recommended - Active, maintained 2025)
   psgcCloud: "https://psgc.cloud/api",
-  
+
   // Option 2: Rootscratch (Backup)
   rootscratch: "https://psgc.rootscratch.com/api",
-  
+
   // Option 3: GitLab Pages (May be slow/down)
   gitlab: "https://psgc.gitlab.io/api",
 };
@@ -35,7 +42,13 @@ const API_BASE = API_OPTIONS.psgcCloud;
 
 // Static dropdown data
 const GENDER_OPTIONS = ["Male", "Female"];
-const CIVIL_STATUS_OPTIONS = ["Single", "Married", "Divorced", "Widowed", "Separated"];
+const CIVIL_STATUS_OPTIONS = [
+  "Single",
+  "Married",
+  "Divorced",
+  "Widowed",
+  "Separated",
+];
 const EDUCATION_LEVELS = [
   "Elementary",
   "High School",
@@ -52,6 +65,10 @@ export default function BasicInformation() {
   const setBasicInfo = useVerificationStore((s) => s.setBasicInfo);
   const DEFAULT_COUNTRY = { name: "Philippines", code: "PH" };
   const [formData, setFormData] = useState({
+    // Name fields
+    firstName: savedBasicInfo.firstName || "",
+    middleName: savedBasicInfo.middleName || "",
+    lastName: savedBasicInfo.lastName || "",
     dateOfBirth: savedBasicInfo.dateOfBirth || "",
     gender: savedBasicInfo.gender || "",
     civilStatus: savedBasicInfo.civilStatus || "",
@@ -88,7 +105,10 @@ export default function BasicInformation() {
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
     if (age < 18) return "You must be at least 18 years old";
@@ -97,7 +117,10 @@ export default function BasicInformation() {
 
   // Check if all required fields are filled
   const isFormValid = useMemo(() => {
-    const baseFieldsFilled = 
+    const baseFieldsFilled =
+      // require first and last name
+      formData.firstName !== "" &&
+      formData.lastName !== "" &&
       formData.dateOfBirth !== "" &&
       ageError === "" &&
       formData.gender !== "" &&
@@ -107,11 +130,13 @@ export default function BasicInformation() {
 
     // For Philippines, all location fields are required
     if (formData.countryCode === "PH") {
-      return baseFieldsFilled &&
+      return (
+        baseFieldsFilled &&
         formData.region !== "" &&
         formData.province !== "" &&
         formData.cityTown !== "" &&
-        formData.barangay !== "";
+        formData.barangay !== ""
+      );
     }
 
     // For other countries, only base fields are required
@@ -128,7 +153,7 @@ export default function BasicInformation() {
       setProvinces([]);
       setCities([]);
       setBarangays([]);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         region: "",
         regionCode: "",
@@ -150,7 +175,7 @@ export default function BasicInformation() {
       setProvinces([]);
       setCities([]);
       setBarangays([]);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         province: "",
         provinceCode: "",
@@ -169,7 +194,7 @@ export default function BasicInformation() {
     } else {
       setCities([]);
       setBarangays([]);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         cityTown: "",
         cityCode: "",
@@ -185,7 +210,7 @@ export default function BasicInformation() {
       fetchBarangays(formData.cityCode);
     } else {
       setBarangays([]);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         barangay: "",
         barangayCode: "",
@@ -198,13 +223,13 @@ export default function BasicInformation() {
     try {
       const response = await fetch(`${API_BASE}/regions`);
       const data = await response.json();
-      
+
       // Transform data to match our format
       const formattedRegions = data.map((region: any) => ({
         code: region.code,
         name: region.name,
       }));
-      
+
       setRegions(formattedRegions);
     } catch (error) {
       console.error("Error fetching regions:", error);
@@ -226,7 +251,10 @@ export default function BasicInformation() {
         { code: "120000000", name: "Region XII (SOCCSKSARGEN)" },
         { code: "160000000", name: "Region XIII (Caraga)" },
         { code: "140000000", name: "Cordillera Administrative Region (CAR)" },
-        { code: "150000000", name: "Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)" },
+        {
+          code: "150000000",
+          name: "Bangsamoro Autonomous Region in Muslim Mindanao (BARMM)",
+        },
       ]);
     } finally {
       setLoadingRegions(false);
@@ -236,14 +264,16 @@ export default function BasicInformation() {
   const fetchProvinces = async (regionCode: string) => {
     setLoadingProvinces(true);
     try {
-      const response = await fetch(`${API_BASE}/regions/${regionCode}/provinces`);
+      const response = await fetch(
+        `${API_BASE}/regions/${regionCode}/provinces`,
+      );
       const data = await response.json();
-      
+
       const formattedProvinces = data.map((province: any) => ({
         code: province.code,
         name: province.name,
       }));
-      
+
       setProvinces(formattedProvinces);
     } catch (error) {
       console.error("Error fetching provinces:", error);
@@ -263,14 +293,16 @@ export default function BasicInformation() {
   const fetchCities = async (provinceCode: string) => {
     setLoadingCities(true);
     try {
-      const response = await fetch(`${API_BASE}/provinces/${provinceCode}/cities-municipalities`);
+      const response = await fetch(
+        `${API_BASE}/provinces/${provinceCode}/cities-municipalities`,
+      );
       const data = await response.json();
-      
+
       const formattedCities = data.map((city: any) => ({
         code: city.code,
         name: city.name,
       }));
-      
+
       setCities(formattedCities);
     } catch (error) {
       console.error("Error fetching cities:", error);
@@ -290,14 +322,16 @@ export default function BasicInformation() {
   const fetchBarangays = async (cityCode: string) => {
     setLoadingBarangays(true);
     try {
-      const response = await fetch(`${API_BASE}/cities-municipalities/${cityCode}/barangays`);
+      const response = await fetch(
+        `${API_BASE}/cities-municipalities/${cityCode}/barangays`,
+      );
       const data = await response.json();
-      
+
       const formattedBarangays = data.map((barangay: any) => ({
         code: barangay.code,
         name: barangay.name,
       }));
-      
+
       setBarangays(formattedBarangays);
     } catch (error) {
       console.error("Error fetching barangays:", error);
@@ -354,8 +388,8 @@ export default function BasicInformation() {
   return (
     <View className="flex-1 bg-white">
       {/* Scrollable Content */}
-      <ScrollView 
-        className="flex-1" 
+      <ScrollView
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
       >
@@ -364,11 +398,61 @@ export default function BasicInformation() {
           <View className="mb-6 mt-10">
             <Text className="text-2xl font-bold mb-2">Basic Information</Text>
             <Text className="text-md text-gray-500 leading-5">
-              Please complete the form below with accurate information. Fill out only fields
-              information including your name, contact details, and identification numbers. This
-              information helps us verify your identity and streamline the application process.
-              Ensure all data is accurate and up-to-date to avoid delays in processing your request.
+              Please complete the form below with accurate information. Fill out
+              only fields information including your name, contact details, and
+              identification numbers. This information helps us verify your
+              identity and streamline the application process. Ensure all data
+              is accurate and up-to-date to avoid delays in processing your
+              request.
             </Text>
+          </View>
+
+          {/* Name Fields */}
+          <View className="mb-4 px-0">
+            <View className="gap-3">
+              <View className="flex-row items-center bg-[#F3F4F6] rounded-full px-4 py-3">
+                <Ionicons name="person-outline" size={20} color="#6b7280" />
+                <TextInput
+                  className="flex-1 ml-3 bg-transparent"
+                  placeholder="First name"
+                  value={formData.firstName}
+                  onChangeText={(v) =>
+                    setFormData((p) => ({ ...p, firstName: v }))
+                  }
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View className="flex-row items-center bg-[#F3F4F6] rounded-full px-4 py-3">
+                <Ionicons
+                  name="person-circle-outline"
+                  size={20}
+                  color="#6b7280"
+                />
+                <TextInput
+                  className="flex-1 ml-3 bg-transparent"
+                  placeholder="Middle name (optional)"
+                  value={formData.middleName}
+                  onChangeText={(v) =>
+                    setFormData((p) => ({ ...p, middleName: v }))
+                  }
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <View className="flex-row items-center bg-[#F3F4F6] rounded-full px-4 py-3">
+                <Ionicons name="person-outline" size={20} color="#6b7280" />
+                <TextInput
+                  className="flex-1 ml-3 bg-transparent"
+                  placeholder="Last name"
+                  value={formData.lastName}
+                  onChangeText={(v) =>
+                    setFormData((p) => ({ ...p, lastName: v }))
+                  }
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
           </View>
 
           {/* Form Fields */}
@@ -376,7 +460,9 @@ export default function BasicInformation() {
             {/* Date of Birth */}
             <DatePicker
               value={formData.dateOfBirth}
-              onSelect={(date: string) => setFormData({ ...formData, dateOfBirth: date })}
+              onSelect={(date: string) =>
+                setFormData({ ...formData, dateOfBirth: date })
+              }
               errorMessage={ageError}
             />
 
@@ -384,24 +470,47 @@ export default function BasicInformation() {
             <CustomDropdown
               label="Gender"
               value={formData.gender}
-              options={GENDER_OPTIONS.map(g => ({ name: g }))}
-              onSelect={(option: DropdownOption) => setFormData({ ...formData, gender: option.name })}
+              options={GENDER_OPTIONS.map((g) => ({ name: g }))}
+              onSelect={(option: DropdownOption) =>
+                setFormData({ ...formData, gender: option.name })
+              }
             />
 
             {/* Civil Status */}
             <CustomDropdown
               label="Civil Status"
               value={formData.civilStatus}
-              options={CIVIL_STATUS_OPTIONS.map(s => ({ name: s }))}
-              onSelect={(option: DropdownOption) => setFormData({ ...formData, civilStatus: option.name })}
+              options={CIVIL_STATUS_OPTIONS.map((s) => ({ name: s }))}
+              onSelect={(option: DropdownOption) =>
+                setFormData({ ...formData, civilStatus: option.name })
+              }
             />
 
             {/* Education Level */}
             <CustomDropdown
               label="Education Level"
               value={formData.educationLevel}
-              options={EDUCATION_LEVELS.map(e => ({ name: e }))}
-              onSelect={(option: DropdownOption) => setFormData({ ...formData, educationLevel: option.name })}
+              options={EDUCATION_LEVELS.map((e) => ({ name: e }))}
+              onSelect={(option: DropdownOption) =>
+                setFormData({ ...formData, educationLevel: option.name })
+              }
+            />
+
+            {/* Country - restored (was previously commented out) */}
+            <CustomDropdown
+              label="Country"
+              value={formData.country}
+              options={[
+                { name: "Philippines", code: "PH" },
+                { name: "Other", code: "OT" },
+              ]}
+              onSelect={(option: DropdownOption) =>
+                setFormData({
+                  ...formData,
+                  country: option.name,
+                  countryCode: option.code || "",
+                })
+              }
             />
 
             {/* Region - Only enabled if Philippines is selected */}
@@ -448,7 +557,7 @@ export default function BasicInformation() {
       </ScrollView>
 
       {/* Fixed Bottom Section */}
-      <View 
+      <View
         className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
@@ -459,29 +568,34 @@ export default function BasicInformation() {
 
         {/* Action Buttons */}
         <View className="px-6 pb-4 flex-row gap-4">
-          <TouchableOpacity 
+          <TouchableOpacity
             className="flex-1 bg-gray-200 py-4 rounded-full"
-            onPress={() => { router.back() }}
+            onPress={() => {
+              router.back();
+            }}
           >
             <Text className="text-black font-semibold text-base text-center">
               Cancel
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             className={`flex-1 py-4 rounded-full ${
               isFormValid ? "bg-black" : "bg-gray-300"
             }`}
-            onPress={() => { 
+            onPress={() => {
               if (isFormValid) {
-                setBasicInfo(formData);
+                // Merge with existing saved basic info to preserve name fields from FullName screen
+                setBasicInfo({ ...savedBasicInfo, ...formData });
                 router.push("/(verification)/ContactInformation");
               }
             }}
             disabled={!isFormValid}
           >
-            <Text className={`font-semibold text-base text-center ${
-              isFormValid ? "text-white" : "text-gray-500"
-            }`}>
+            <Text
+              className={`font-semibold text-base text-center ${
+                isFormValid ? "text-white" : "text-gray-500"
+              }`}
+            >
               Next
             </Text>
           </TouchableOpacity>
