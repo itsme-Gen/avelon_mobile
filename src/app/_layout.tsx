@@ -1,3 +1,4 @@
+import "@/polyfills/wallet-compat";
 import { WalletProvider } from "@/providers/WalletProvider";
 import { setupAndroidChannel } from "@/services/notification.service";
 import {
@@ -7,14 +8,12 @@ import {
     Syne_700Bold,
     Syne_800ExtraBold,
 } from "@expo-google-fonts/syne";
-import "@walletconnect/react-native-compat"; // Must be FIRST — patches Object.entries/keys and Keychain for WalletConnect
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
 import { LogBox, StyleSheet, Text, TextInput } from "react-native";
-import "react-native-get-random-values"; // Crypto polyfill for WalletConnect
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
