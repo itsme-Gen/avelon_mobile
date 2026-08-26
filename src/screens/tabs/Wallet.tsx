@@ -7,7 +7,7 @@ import * as walletService from "@/services/wallet.service";
 import { useVerificationStore } from "@/stores/verification.store";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import { Ionicons } from "@expo/vector-icons";
-import { useAppKit } from "@reown/appkit-react-native";
+import { useAppKit } from "@/hooks/useAppKit";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
