@@ -1,14 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
-import { sepolia } from "wagmi/chains";
+import { appChain } from "../config/chain";
 
 const queryClient = new QueryClient();
 const webConfig = createConfig({
-  chains: [sepolia],
+  chains: [appChain],
   connectors: [],
   transports: {
-    [sepolia.id]: http(),
+    [appChain.id]: http(),
   },
 });
 
