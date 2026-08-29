@@ -234,7 +234,7 @@ export async function getWallets(): Promise<{ success: boolean; data?: Wallet[];
 }
 
 /**
- * Confirm collateral deposit — backend verifies txHash on Sepolia and activates loan
+ * Confirm collateral deposit — backend verifies txHash on Base Sepolia and activates loan
  */
 export async function depositCollateral(
     loanId: string,
@@ -261,7 +261,7 @@ export async function depositCollateral(
 }
 
 /**
- * Confirm loan repayment — backend verifies txHash on Sepolia and records repayment
+ * Confirm loan repayment — backend verifies txHash on Base Sepolia and records repayment
  */
 export async function repayLoan(
     loanId: string,

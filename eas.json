@@ -9,10 +9,21 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://avelon-backend.onrender.com/api/v1",
+        "EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID": "98ef23473020d558cb6c33b74048df31"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://avelon-backend.onrender.com/api/v1",
+        "EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID": "98ef23473020d558cb6c33b74048df31"
+      }
     }
   },
   "submit": {

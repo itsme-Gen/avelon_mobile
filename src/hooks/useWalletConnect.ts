@@ -6,7 +6,7 @@ import {
     useSignMessage,
 } from 'wagmi';
 import { encodeFunctionData, parseEther } from 'viem';
-import { sepolia } from 'wagmi/chains';
+import { appChain } from '../config/chain';
 import { COLLATERAL_MANAGER_ABI } from '@/constants/abis';
 
 export function useWalletConnect() {
@@ -16,10 +16,10 @@ export function useWalletConnect() {
     const { sendTransactionAsync } = useSendTransaction();
     const { signMessageAsync } = useSignMessage();
 
-    /** Ensure wallet is on Sepolia before any transaction */
-    async function ensureSepolia(): Promise<void> {
-        if (chainId !== sepolia.id) {
-            await switchChainAsync({ chainId: sepolia.id });
+    /** Ensure wallet is on the app chain before any transaction */
+    async function ensureNetwork(): Promise<void> {
+        if (chainId !== appChain.id) {
+            await switchChainAsync({ chainId: appChain.id });
         }
     }
 
@@ -32,7 +32,7 @@ export function useWalletConnect() {
         contractLoanId: number;
         amountEth: string;
     }): Promise<string> {
-        await ensureSepolia();
+        await ensureNetwork();
 
         const data = encodeFunctionData({
             abi: COLLATERAL_MANAGER_ABI,
@@ -57,7 +57,7 @@ export function useWalletConnect() {
         contractLoanId: number;
         amountEth: string;
     }): Promise<string> {
-        await ensureSepolia();
+        await ensureNetwork();
 
         const data = encodeFunctionData({
             abi: COLLATERAL_MANAGER_ABI,
@@ -82,7 +82,7 @@ export function useWalletConnect() {
         toAddress: string;
         amountEth: string;
     }): Promise<string> {
-        await ensureSepolia();
+        await ensureNetwork();
 
         const txHash = await sendTransactionAsync({
             to: params.toAddress as `0x${string}`,
@@ -104,7 +104,7 @@ export function useWalletConnect() {
         address,
         isConnected,
         chainId,
-        ensureSepolia,
+        ensureNetwork,
         depositCollateral,
         addCollateral,
         repayLoan,

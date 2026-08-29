@@ -22,7 +22,7 @@ export function getWalletErrorMessage(error: unknown): string {
         message.includes('chain not configured') ||
         message.includes('SwitchChainError')
     ) {
-        return 'Please switch to Sepolia testnet in your wallet.';
+        return 'Please switch to Base Sepolia testnet in your wallet.';
     }
 
     // Insufficient funds
