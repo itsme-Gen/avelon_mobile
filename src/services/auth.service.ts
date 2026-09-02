@@ -157,6 +157,16 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
     });
 }
 
+export async function validateResetToken(token: string): Promise<{
+    success: boolean;
+    data: { valid: boolean; email: string; expires: string };
+}> {
+    return apiRequest('/auth/validate-reset-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+    });
+}
+
 /**
  * Change password (authenticated)
  * Calls: POST /api/v1/auth/change-password

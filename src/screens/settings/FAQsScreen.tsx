@@ -26,15 +26,15 @@ const FAQS = [
   },
   {
     question: "What happens if I miss a payment?",
-    answer: "Late payments may incur penalty fees as specified in your loan plan. If your collateral ratio drops too low, your collateral may be liquidated.",
+    answer: "Late payments may incur penalty fees as specified in your loan plan. In this build, liquidation is limited to overdue default after the configured grace period; ETH volatility is advisory only.",
   },
   {
     question: "How does KYC verification work?",
-    answer: "KYC (Know Your Customer) verification requires you to submit a valid government ID and a selfie. Our system processes and verifies your identity automatically.",
+    answer: "KYC requires a government ID and selfie. Automated checks assist the review, but uncertain or unavailable AI results stay pending for manual administrator review.",
   },
   {
     question: "Is my data secure?",
-    answer: "Yes. We use industry-standard encryption and security practices to protect your personal information and financial data.",
+    answer: "This is a capstone prototype, not a certified production KYC system. Use synthetic demonstration data only; production document storage remains disabled until a secure object-storage adapter is implemented.",
   },
 ];
 

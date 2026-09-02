@@ -28,16 +28,28 @@ export default function LoanRepaymentScreen() {
 
   const { loanId, remainingOwed, loanTitle } = params;
 
-  const [treasuryAddress, setTreasuryAddress] = useState("");
+  // Repayments go to the liquidity pool, addressed to the on-chain loan id, so the
+  // investors who funded it get credited. Both values have to be loaded before the
+  // repay button can do anything.
+  const [poolAddress, setPoolAddress] = useState("");
+  const [contractLoanId, setContractLoanId] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
-      const res = await loanService.getBlockchainStatus();
-      if (res.success && res.data?.contracts.treasury) {
-        setTreasuryAddress(res.data.contracts.treasury);
+      const [status, loan] = await Promise.all([
+        loanService.getBlockchainStatus(),
+        loanService.getLoanById(loanId),
+      ]);
+      if (status.success && status.data?.contracts.liquidityPool) {
+        setPoolAddress(status.data.contracts.liquidityPool);
+      }
+      if (loan.success && typeof loan.data?.contractLoanId === "number") {
+        setContractLoanId(loan.data.contractLoanId);
       }
     })();
-  }, []);
+  }, [loanId]);
+
+  const canRepay = !!poolAddress && contractLoanId !== null;
 
   const { isConnected, repayLoan: walletRepayLoan } = useWalletConnect();
 
@@ -52,7 +64,7 @@ export default function LoanRepaymentScreen() {
     visible: boolean;
     title: string;
     message?: string;
-    buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }>;
+    buttons: { text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }[];
     icon?: keyof typeof Ionicons.glyphMap;
     iconColor?: string;
   }>({ visible: false, title: "", buttons: [] });
@@ -87,12 +99,13 @@ export default function LoanRepaymentScreen() {
   };
 
   const handleWalletRepay = async () => {
-    if (!treasuryAddress || !remainingOwed) return;
+    if (!canRepay || !remainingOwed) return;
 
     setIsSubmitting(true);
     try {
       const txHash = await walletRepayLoan({
-        toAddress: treasuryAddress,
+        liquidityPoolAddress: poolAddress,
+        contractLoanId: contractLoanId!,
         amountEth: remainingOwed,
       });
       await submitToBackend(txHash, remainingOwed);
@@ -196,9 +209,9 @@ export default function LoanRepaymentScreen() {
           <View className="flex-row items-center">
             <Ionicons name="send-outline" size={14} color="#6B7280" />
             <Text className="text-gray-500 text-xs ml-1" numberOfLines={1}>
-              {treasuryAddress
-                ? `Send to: ${treasuryAddress.slice(0, 10)}...${treasuryAddress.slice(-6)}`
-                : "Loading repayment address..."}
+              {canRepay
+                ? `Pool: ${poolAddress.slice(0, 10)}...${poolAddress.slice(-6)} · loan #${contractLoanId}`
+                : "Loading repayment details..."}
             </Text>
           </View>
         </View>
@@ -207,7 +220,9 @@ export default function LoanRepaymentScreen() {
         <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-100">
           <Text className="text-[13px] text-blue-800 font-semibold mb-1">How to repay</Text>
           <Text className="text-[12px] text-blue-700 leading-5">
-            Send ETH to the treasury address above (via MetaMask or Remix IDE), then paste the transaction hash below to record your repayment.
+            Repayments must call the pool's repay function with your loan id — a plain transfer is not
+            recorded against your loan. Use a connected wallet, then paste the transaction hash
+            here if the app did not record it automatically.
           </Text>
         </View>
 
@@ -215,8 +230,8 @@ export default function LoanRepaymentScreen() {
         {isConnected && !showManual && (
           <TouchableOpacity
             onPress={handleWalletRepay}
-            disabled={isSubmitting || !treasuryAddress}
-            className={`rounded-2xl py-4 items-center mb-4 ${isSubmitting || !treasuryAddress ? "bg-gray-300" : "bg-gray-900"}`}
+            disabled={isSubmitting || !canRepay}
+            className={`rounded-2xl py-4 items-center mb-4 ${isSubmitting || !canRepay ? "bg-gray-300" : "bg-gray-900"}`}
           >
             {isSubmitting ? (
               <View className="flex-row items-center">

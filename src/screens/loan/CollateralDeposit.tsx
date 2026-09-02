@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,8 +14,6 @@ import { useWalletConnect } from "@/hooks/useWalletConnect";
 import { useCollateralGasEstimate } from "@/hooks/useGasEstimate";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import * as loanService from "@/services/loan.service";
-
-const TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
 
 export default function CollateralDepositScreen() {
   const router = useRouter();
@@ -45,17 +42,13 @@ export default function CollateralDepositScreen() {
 
   const { isConnected, address, depositCollateral } = useWalletConnect();
 
-  // Manual fallback state
-  const [showManual, setShowManual] = useState(false);
-  const [manualTxHash, setManualTxHash] = useState("");
-
   // Transaction state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{
     visible: boolean;
     title: string;
     message?: string;
-    buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }>;
+    buttons: { text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }[];
     icon?: keyof typeof Ionicons.glyphMap;
     iconColor?: string;
   }>({ visible: false, title: "", buttons: [] });
@@ -115,39 +108,6 @@ export default function CollateralDepositScreen() {
         visible: true,
         title: "Transaction Failed",
         message: getWalletErrorMessage(error),
-        icon: "alert-circle",
-        iconColor: "#EF4444",
-        buttons: [{ text: "OK" }],
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Submit manual tx hash
-  const handleManualSubmit = async () => {
-    const trimmed = manualTxHash.trim();
-    if (!TX_HASH_REGEX.test(trimmed)) {
-      setAlert({
-        visible: true,
-        title: "Invalid Hash",
-        message: "Please enter a valid transaction hash (0x...)",
-        icon: "alert-circle",
-        iconColor: "#EF4444",
-        buttons: [{ text: "OK" }],
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await submitToBackend(trimmed);
-    } catch (error) {
-      console.error("[CollateralDeposit] Manual submit error:", error);
-      setAlert({
-        visible: true,
-        title: "Error",
-        message: "Something went wrong. Please try again.",
         icon: "alert-circle",
         iconColor: "#EF4444",
         buttons: [{ text: "OK" }],
@@ -231,7 +191,7 @@ export default function CollateralDepositScreen() {
         )}
 
         {/* WalletConnect Deposit Button */}
-        {isConnected && !showManual && (
+        {isConnected && (
           <TouchableOpacity
             onPress={handleWalletDeposit}
             disabled={isSubmitting}
@@ -256,63 +216,11 @@ export default function CollateralDepositScreen() {
         )}
 
         {/* Not connected message */}
-        {!isConnected && !showManual && (
+        {!isConnected && (
           <View className="bg-yellow-50 rounded-xl p-4 mb-4 border border-yellow-200">
             <Text className="text-[13px] text-yellow-800">
-              No wallet connected via WalletConnect. You can paste a transaction hash manually below.
+              Connect your verified wallet from the Wallet tab before depositing collateral. Manual transaction-hash submission is disabled for security.
             </Text>
-          </View>
-        )}
-
-        {/* Toggle to manual */}
-        {!showManual && (
-          <TouchableOpacity
-            onPress={() => setShowManual(true)}
-            className="items-center py-2"
-          >
-            <Text className="text-gray-500 text-xs underline">
-              Already sent? Paste transaction hash
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Manual tx hash input */}
-        {showManual && (
-          <View className="bg-white rounded-2xl p-5 border border-gray-200">
-            <Text className="text-base font-bold text-gray-900 mb-1">
-              Manual Submission
-            </Text>
-            <Text className="text-sm text-gray-500 mb-3">
-              Send {collateralRequired} ETH to the contract address above, then paste the transaction hash.
-            </Text>
-            <TextInput
-              className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 border border-gray-200 mb-3"
-              placeholder="0x..."
-              placeholderTextColor="#9CA3AF"
-              value={manualTxHash}
-              onChangeText={setManualTxHash}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => { setShowManual(false); setManualTxHash(""); }}
-                className="flex-1 bg-gray-100 rounded-full py-3 items-center"
-              >
-                <Text className="text-sm font-semibold text-gray-700">Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleManualSubmit}
-                disabled={isSubmitting}
-                className="flex-1 bg-gray-900 rounded-full py-3 items-center"
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text className="text-sm font-semibold text-white">Submit</Text>
-                )}
-              </TouchableOpacity>
-            </View>
           </View>
         )}
       </ScrollView>

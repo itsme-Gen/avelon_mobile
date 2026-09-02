@@ -434,8 +434,9 @@ export default function IDVerification() {
             </Text>
             <Text className="text-md text-gray-600 leading-5">
               Upload a clear photo of your government-issued ID (front & back)
-              and your e-signature. Optionally, add proof of income and address
-              to unlock higher verification tiers.
+              and your e-signature. Proof of income and address are optional for
+              identity review, but omitting them can lower your credit score and
+              may leave you ineligible for every loan plan.
             </Text>
           </View>
 
@@ -491,7 +492,7 @@ export default function IDVerification() {
               Optional Documents
             </Text>
             <Text className="text-xs text-gray-400 mb-3">
-              Upload these to unlock Standard or Enhanced verification tier
+              Strongly recommended for credit scoring and loan eligibility
             </Text>
           </View>
 

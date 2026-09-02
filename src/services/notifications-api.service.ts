@@ -4,6 +4,7 @@
  */
 import { API_BASE_URL } from '@/config';
 import { getAccessToken } from '@/utils/storage';
+import { authenticatedFetch } from './authenticated-fetch';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export async function getNotifications(
             ...(unreadOnly ? { unread: 'true' } : {}),
         });
 
-        const response = await fetch(`${API_BASE_URL}/notifications?${params}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/notifications?${params}`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -77,7 +78,7 @@ export async function getNotifications(
  */
 export async function markAsRead(notificationId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(
+        const response = await authenticatedFetch(
             `${API_BASE_URL}/notifications/${encodeURIComponent(notificationId)}/read`,
             {
                 method: 'PUT',
@@ -103,7 +104,7 @@ export async function markAsRead(notificationId: string): Promise<{ success: boo
  */
 export async function markAllAsRead(): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/notifications/read-all`, {
             method: 'PUT',
             headers: await authJsonHeaders(),
         });

@@ -1,6 +1,8 @@
 import {
     PagerView,
     type PagerViewOnPageSelectedEvent,
+// Expo resolves this module to its .native.tsx or .web.tsx implementation.
+// eslint-disable-next-line import/no-unresolved
 } from "@/components/PagerViewWrapper";
 import type { Loan, LoanTransaction } from "@/services/loan.service";
 import * as loanService from "@/services/loan.service";
@@ -20,6 +22,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const STATUS_COLORS: Record<string, string> = {
+  PENDING_APPROVAL: "bg-amber-400",
+  REJECTED: "bg-red-400",
   PENDING_COLLATERAL: "bg-yellow-400",
   COLLATERAL_DEPOSITED: "bg-blue-400",
   ACTIVE: "bg-green-500",
@@ -30,6 +34,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
+  PENDING_APPROVAL: "Awaiting Review",
+  REJECTED: "Rejected",
   PENDING_COLLATERAL: "Pending Collateral",
   COLLATERAL_DEPOSITED: "Collateral Deposited",
   ACTIVE: "Active",
@@ -40,6 +46,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string }> = {
+  PENDING_APPROVAL: { bg: "bg-amber-100", text: "text-amber-700" },
+  REJECTED: { bg: "bg-red-100", text: "text-red-700" },
   PENDING_COLLATERAL: { bg: "bg-yellow-100", text: "text-yellow-700" },
   COLLATERAL_DEPOSITED: { bg: "bg-blue-100", text: "text-blue-700" },
   ACTIVE: { bg: "bg-green-100", text: "text-green-700" },
@@ -190,6 +198,20 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
         </View>
 
         {/* Action Buttons */}
+        {loan.status === "REJECTED" && loan.rejectionReason && (
+          <View className="bg-red-50 rounded-xl px-3 py-2 mb-3">
+            <Text className="text-xs text-red-700">{loan.rejectionReason}</Text>
+          </View>
+        )}
+
+        {loan.status === "PENDING_APPROVAL" && (
+          <View className="bg-amber-50 rounded-xl px-3 py-2 mb-3">
+            <Text className="text-xs text-amber-700">
+              An administrator is reviewing this application. You will be notified once it is decided.
+            </Text>
+          </View>
+        )}
+
         {loan.status === "PENDING_COLLATERAL" && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
@@ -483,7 +505,7 @@ export default function DocumentsScreen() {
             </Text>
 
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>

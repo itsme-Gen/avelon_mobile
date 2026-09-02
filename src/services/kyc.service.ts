@@ -3,11 +3,15 @@
  * Handles KYC profile submission, document uploads, and verification status.
  */
 import { API_BASE_URL } from '@/config';
+import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
 
 // ─── Types ──────────────────────────────────────────────────
 
 export interface KycProfileData {
+    firstName: string;
+    middleName?: string;
+    lastName: string;
     dateOfBirth: string;
     gender: string;
     civilStatus: string;
@@ -88,7 +92,7 @@ export async function submitKycProfile(data: KycProfileData): Promise<{ success:
         const headers = await authJsonHeaders();
         const url = `${API_BASE_URL}/kyc/profile`;
 
-        const response = await fetch(url, {
+        const response = await authenticatedFetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
@@ -112,7 +116,7 @@ export async function submitKycProfile(data: KycProfileData): Promise<{ success:
  */
 export async function getKycProfile(): Promise<{ success: boolean; data?: KycProfileData; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/kyc/profile`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/profile`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -153,7 +157,7 @@ export async function uploadDocument(
         } as any);
         formData.append('type', documentType);
 
-        const response = await fetch(`${API_BASE_URL}/kyc/documents`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/documents`, {
             method: 'POST',
             headers: {
                 ...headers,
@@ -180,7 +184,7 @@ export async function uploadDocument(
  */
 export async function submitKyc(): Promise<{ success: boolean; data?: KycSubmitResponse['data']; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/kyc/submit`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/submit`, {
             method: 'POST',
             headers: await authJsonHeaders(),
             body: JSON.stringify({}),
@@ -226,7 +230,7 @@ export async function verifyFace(
             type: 'image/jpeg',
         } as any);
 
-        const response = await fetch(`${API_BASE_URL}/kyc/verify/face`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/verify/face`, {
             method: 'POST',
             headers,
             body: formData,
@@ -250,7 +254,7 @@ export async function verifyFace(
  */
 export async function getKycStatus(): Promise<{ success: boolean; data?: KycStatusResponse['data']; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/kyc/status`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/status`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });

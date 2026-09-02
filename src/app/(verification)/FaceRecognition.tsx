@@ -102,7 +102,7 @@ export default function FaceRecognition() {
     if (!permission?.granted) {
       requestPermission();
     }
-  }, [permission]);
+  }, [permission, requestPermission]);
 
   if (!permission) {
     return (

@@ -20,7 +20,6 @@ export default function VerificationSummary() {
   const basicInfo = useVerificationStore((s) => s.basicInfo);
   const contactInfo = useVerificationStore((s) => s.contactInfo);
   const idDocuments = useVerificationStore((s) => s.idDocuments);
-  const markVerified = useVerificationStore((s) => s.markVerified);
   const faceMatchPassed = useVerificationStore((s) => s.faceMatchPassed);
   const faceMatchScore = useVerificationStore((s) => s.faceMatchScore);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +42,9 @@ export default function VerificationSummary() {
     try {
       // Step 1: Submit profile info
       const profileResult = await kycService.submitKycProfile({
+        firstName: basicInfo.firstName?.trim() || "",
+        middleName: basicInfo.middleName?.trim() || undefined,
+        lastName: basicInfo.lastName?.trim() || "",
         dateOfBirth: isoDateOfBirth,
         gender: basicInfo.gender,
         civilStatus: basicInfo.civilStatus,
@@ -118,46 +120,8 @@ export default function VerificationSummary() {
         return;
       }
 
-      // Step 4: Poll KYC status — AI verification runs async on backend
-      let finalStatus = "PENDING_KYC";
-      let rejectionReason = "";
-      for (let i = 0; i < 15; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        const statusResult = await kycService.getKycStatus();
-        if (statusResult.success && statusResult.data) {
-          const s = statusResult.data.status;
-          if (s === "APPROVED" || s === "CONNECTED") {
-            finalStatus = "APPROVED";
-            break;
-          }
-          if (s === "REJECTED") {
-            finalStatus = "REJECTED";
-            rejectionReason =
-              statusResult.data.rejectionReason || "Verification failed.";
-            break;
-          }
-        }
-      }
-
-      if (finalStatus === "REJECTED") {
-        setAlert({
-          visible: true,
-          title: "Verification Failed",
-          message: rejectionReason,
-          icon: "close-circle-outline",
-          iconColor: "#EF4444",
-          buttons: [
-            {
-              text: "OK",
-              onPress: () => router.replace("/(tabs)/Home" as any),
-            },
-          ],
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Success — navigate to success screen
+      // Verification continues asynchronously. The app refreshes status at a
+      // modest interval and notifications report the final decision.
       router.push("/(verification)/Success" as any);
     } catch (error) {
       console.error("[VerificationSummary] Submit error:", error);

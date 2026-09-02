@@ -1,8 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs, router } from "expo-router";
+import type { Href } from "expo-router";
+import { useAuthStore } from "@/stores/auth.store";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Dimensions, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TabIconProps {
@@ -11,6 +14,8 @@ interface TabIconProps {
   iconName: string;
   size?: number;
 }
+
+const notificationsRoute = "/notifications" as Href;
 
 const TabIcon = ({
   focused,
@@ -32,13 +37,28 @@ const TabIcon = ({
 };
 
 export default function TabsLayout() {
+  const { isAuthenticated, checkSession } = useAuthStore();
+  const [checked, setChecked] = useState(isAuthenticated);
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
-  const margin = screenWidth * 0.05;
+  useEffect(() => {
+    if (isAuthenticated) {
+      setChecked(true);
+      return;
+    }
+    checkSession().finally(() => setChecked(true));
+  }, [checkSession, isAuthenticated]);
+
+  if (!checked) {
+    return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
+  }
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/signin" />;
+  }
 
   return (
     <>
-      <StatusBar style="dark" backgroundColor="#fff" />
+      <StatusBar style="dark" />
       <Tabs
         screenOptions={{
           tabBarShowLabel: false,
@@ -115,10 +135,7 @@ export default function TabsLayout() {
                     marginRight: 12,
                     padding: 6,
                   }}
-                  onPress={() => {
-                    // Handle notification press
-                    console.log("Notification pressed");
-                  }}
+                  onPress={() => router.push(notificationsRoute)}
               >
                 <Ionicons name="notifications-outline" size={22} color="#111827" />
               </TouchableOpacity>
@@ -152,10 +169,7 @@ export default function TabsLayout() {
             headerRight: () => (
               <TouchableOpacity
                 className="mr-4"
-                onPress={() => {
-                  // Handle notification press
-                  console.log("Notification pressed");
-                }}
+                onPress={() => router.push(notificationsRoute)}
               >
                 <Ionicons name="notifications-outline" size={24} color="#000" />
               </TouchableOpacity>

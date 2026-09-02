@@ -44,3 +44,35 @@ export const COLLATERAL_MANAGER_ABI = [
         type: 'event',
     },
 ] as const;
+
+/** AvelonLiquidityPool — the calls a borrower or investor signs themselves */
+export const LIQUIDITY_POOL_ABI = [
+    {
+        inputs: [{ internalType: 'uint32', name: 'loanId', type: 'uint32' }],
+        name: 'repay',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+    },
+    {
+        inputs: [],
+        name: 'deposit',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+    },
+    {
+        inputs: [{ internalType: 'uint256', name: 'shareAmount', type: 'uint256' }],
+        name: 'withdraw',
+        outputs: [],
+        stateMutability: 'nonpayable',
+        type: 'function',
+    },
+    {
+        inputs: [],
+        name: 'claimYield',
+        outputs: [],
+        stateMutability: 'nonpayable',
+        type: 'function',
+    },
+] as const;

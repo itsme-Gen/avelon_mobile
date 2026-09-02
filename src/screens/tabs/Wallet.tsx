@@ -1,5 +1,6 @@
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
 import { useWalletConnect } from "@/hooks/useWalletConnect";
+import { appChain } from "@/config/chain";
 import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
 import * as marketService from "@/services/market.service";
 import type { WalletBalance, WalletInfo } from "@/services/wallet.service";
@@ -15,7 +16,6 @@ import {
     Dimensions,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -34,12 +34,8 @@ const chartWidth =
   analyticsCardPadding * 2 -
   chartSideMargin * 2;
 
-const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
-
 export default function WalletScreen() {
   const [showVerification, setShowVerification] = useState(false);
-  const [showManualConnect, setShowManualConnect] = useState(false);
-  const [addressInput, setAddressInput] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
@@ -125,7 +121,8 @@ export default function WalletScreen() {
       setIsConnecting(true);
       try {
         // Step 1: Request nonce from backend
-        const connectRes = await walletService.connectWallet(wcAddress);
+        const chainId = appChain.id;
+        const connectRes = await walletService.connectWallet(wcAddress, chainId);
         if (!connectRes.success || !connectRes.data?.message) {
           throw new Error(
             connectRes.error || "Failed to get verification message",
@@ -140,6 +137,7 @@ export default function WalletScreen() {
         // Step 3: Verify signature with backend
         const verifyRes = await walletService.verifyWallet(
           wcAddress,
+          chainId,
           signature,
           connectRes.data.message,
         );
@@ -178,49 +176,10 @@ export default function WalletScreen() {
     };
 
     registerWcWallet();
+  // This effect reacts only to WalletConnect identity transitions. Including
+  // the registration callbacks or wallet list would repeat signature prompts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wcConnected, wcAddress]);
-
-  // Manual address connection (fallback)
-  const handleManualConnect = async () => {
-    const trimmed = addressInput.trim();
-    if (!ETH_ADDRESS_REGEX.test(trimmed)) {
-      setAlert({
-        visible: true,
-        title: "Invalid Address",
-        message: "Please enter a valid Ethereum address (0x...)",
-        buttons: [{ text: "OK" }],
-        icon: "alert-circle",
-        iconColor: "#EF4444",
-      });
-      return;
-    }
-    setIsConnecting(true);
-    const result = await walletService.connectAndVerify(trimmed);
-    setIsConnecting(false);
-    if (result.success) {
-      setShowManualConnect(false);
-      setAddressInput("");
-      fetchWalletData();
-      fetchMarketData();
-      setAlert({
-        visible: true,
-        title: "Wallet Connected",
-        message: "Your wallet has been connected and verified successfully.",
-        buttons: [{ text: "OK" }],
-        icon: "checkmark-circle",
-        iconColor: "#10B981",
-      });
-    } else {
-      setAlert({
-        visible: true,
-        title: "Connection Failed",
-        message: result.error || "Could not connect wallet.",
-        buttons: [{ text: "OK" }],
-        icon: "alert-circle",
-        iconColor: "#EF4444",
-      });
-    }
-  };
 
   const handleDisconnect = () => {
     if (!primaryWallet) return;
@@ -374,7 +333,7 @@ export default function WalletScreen() {
             </Text>
 
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>
@@ -410,55 +369,8 @@ export default function WalletScreen() {
         >
           {renderVerifyBanner}
 
-          {/* Manual Connect Fallback */}
-          {showManualConnect && (
-            <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200">
-              <Text className="text-base font-bold text-gray-900 mb-3">
-                Connect Manually
-              </Text>
-              <Text className="text-sm text-gray-500 mb-3">
-                Enter your Ethereum wallet address
-              </Text>
-              <TextInput
-                className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 border border-gray-200 mb-3"
-                placeholder="0x..."
-                placeholderTextColor="#9CA3AF"
-                value={addressInput}
-                onChangeText={setAddressInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowManualConnect(false);
-                    setAddressInput("");
-                  }}
-                  className="flex-1 bg-gray-100 rounded-full py-3 items-center"
-                >
-                  <Text className="text-sm font-semibold text-gray-700">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleManualConnect}
-                  disabled={isConnecting}
-                  className="flex-1 bg-black rounded-full py-3 items-center"
-                >
-                  {isConnecting ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text className="text-sm font-semibold text-white">
-                      Connect
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
           {/* Connecting overlay */}
-          {isConnecting && !showManualConnect && (
+          {isConnecting && (
             <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200 items-center">
               <ActivityIndicator size="large" color="#f8893c" />
               <Text className="text-sm text-gray-600 mt-3">
@@ -515,12 +427,9 @@ export default function WalletScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Fallback: Manual address entry */}
-              <TouchableOpacity onPress={() => setShowManualConnect(true)}>
-                <Text className="text-[#ffeede] text-xs underline">
-                  Or enter address manually
-                </Text>
-              </TouchableOpacity>
+              <Text className="text-[#ffeede] text-xs text-center">
+                A signature is required to prove wallet ownership. No gas fee is charged.
+              </Text>
             </View>
           ) : (
             <>

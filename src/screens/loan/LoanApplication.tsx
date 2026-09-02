@@ -135,7 +135,7 @@ export default function LoanApplication() {
 
   const planId = params.planId || "";
   const loanTitle = params.title || "Starting Loan Plan";
-  const loanAmount = params.amount || "0.00001452 ETH";
+  const loanAmount = Number(params.amount) || 0;
   const interestRate = params.interest || "5%";
   const duration = params.duration || "30";
 
@@ -165,19 +165,15 @@ export default function LoanApplication() {
     setShowTerms(false);
   };
 
-  const principalAmount = Number(
-    (loanAmount || "0")
-      .replace(/ETH/i, "")
-      .replace(/[^0-9.]/g, "")
-      .trim(),
-  );
+  const principalAmount = loanAmount;
   const interestRateValue = Number(
     (interestRate || "0").replace(/%/g, "").trim(),
   );
   const durationDays = Number(duration) || 30;
   const monthsCount = Math.max(1, Math.round(durationDays / 30));
+  const totalInterest = principalAmount * (interestRateValue / 100) * (durationDays / 365);
   const monthlyRepayment = monthsCount
-    ? (principalAmount * (1 + interestRateValue / 100)) / monthsCount
+    ? (principalAmount + totalInterest) / monthsCount
     : 0;
   const formattedMonthlyRepayment = `${monthlyRepayment.toFixed(6)} ETH`;
   const handleApply = async () => {
@@ -210,19 +206,18 @@ export default function LoanApplication() {
         return;
       }
 
-      const walletId = walletResult.data[0].id;
+      const wallet = walletResult.data.find((item) => item.isPrimary) ?? walletResult.data[0];
+      const walletId = wallet.id;
 
       // Parse duration to number of days (e.g., "30" -> 30, passed from LoanPlans screen)
       const durationDays = parseInt(duration, 10) || 30;
 
-      // Parse amount - strip " ETH" suffix if present
-      const amountValue = loanAmount.replace(/\s*ETH$/i, "").trim();
-
       const result = await loanService.applyForLoan({
         planId,
-        amount: amountValue,
+        amount: String(loanAmount),
         duration: durationDays,
         walletId,
+        purpose: purpose.trim(),
       });
 
       if (!result.success) {
@@ -328,7 +323,7 @@ export default function LoanApplication() {
             </Text>
 
             <Text className="text-xl font-bold text-gray-900">
-              {loanAmount}
+              {loanAmount.toFixed(6)} ETH
             </Text>
           </View>
         </View>

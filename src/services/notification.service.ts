@@ -9,6 +9,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '@/config';
 import { getAccessToken } from '@/utils/storage';
+import { authenticatedFetch } from './authenticated-fetch';
 
 // ─── Foreground notification behaviour ───────────────────────────────────────
 Notifications.setNotificationHandler({
@@ -55,9 +56,12 @@ export async function getFCMToken(): Promise<string | null> {
     }
 
     // getExpoPushTokenAsync works in both Expo Go and custom builds
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: '30f3b200-2ed7-4d3c-9fda-f54600564558',
-    });
+    const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    if (!projectId) {
+        console.warn('[Notifications] EXPO_PUBLIC_EAS_PROJECT_ID is not configured.');
+        return null;
+    }
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     return tokenData.data;
 }
 
@@ -76,7 +80,7 @@ export async function registerDeviceToken(): Promise<void> {
         const accessToken = await getAccessToken();
         if (!accessToken) return;
 
-        await fetch(`${API_BASE_URL}/notifications/device-token`, {
+        await authenticatedFetch(`${API_BASE_URL}/notifications/device-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -101,7 +105,7 @@ export async function unregisterDeviceToken(): Promise<void> {
         const accessToken = await getAccessToken();
         if (!accessToken) return;
 
-        await fetch(`${API_BASE_URL}/notifications/device-token`, {
+        await authenticatedFetch(`${API_BASE_URL}/notifications/device-token`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',

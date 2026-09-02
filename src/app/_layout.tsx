@@ -10,10 +10,12 @@ import {
 } from "@expo-google-fonts/syne";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
+import type { Href } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
 import { LogBox, StyleSheet, Text, TextInput } from "react-native";
+import { useAuthStore } from "@/stores/auth.store";
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
@@ -30,6 +32,8 @@ const syneFontMap: Record<string, string> = {
   bold: "Syne_700Bold",
 };
 
+const notificationsRoute = "/notifications" as Href;
+
 // Keep native splash visible until we manually hide it
 NativeSplashScreen.preventAutoHideAsync();
 
@@ -37,6 +41,8 @@ NativeSplashScreen.preventAutoHideAsync();
 LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 
 export default function RootLayout() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const checkSession = useAuthStore((state) => state.checkSession);
   const [fontsLoaded, fontError] = useFonts({
     Syne_400Regular,
     Syne_500Medium,
@@ -48,6 +54,10 @@ export default function RootLayout() {
     null,
   );
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    checkSession().catch(() => undefined);
+  }, [checkSession]);
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
@@ -121,8 +131,11 @@ export default function RootLayout() {
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data;
-        console.log("[Notification tapped]", data);
-        // TODO: navigate based on data.type (e.g. loan update, repayment reminder)
+        if (data?.loanId && typeof data.loanId === "string") {
+          router.push({ pathname: "/loan-repayment", params: { loanId: data.loanId } });
+          return;
+        }
+        router.push(notificationsRoute);
       });
 
     return () => {
@@ -140,10 +153,15 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="loan-application" />
-        <Stack.Screen name="collateral-deposit" />
-        <Stack.Screen name="loan-repayment" />
+        <Stack.Protected guard={isAuthenticated}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(verification)" />
+          <Stack.Screen name="(settings)" />
+          <Stack.Screen name="loan-application" />
+          <Stack.Screen name="collateral-deposit" />
+          <Stack.Screen name="loan-repayment" />
+          <Stack.Screen name="notifications" />
+        </Stack.Protected>
       </Stack>
     </WalletProvider>
   );

@@ -7,7 +7,7 @@ import {
 } from 'wagmi';
 import { encodeFunctionData, parseEther } from 'viem';
 import { appChain } from '../config/chain';
-import { COLLATERAL_MANAGER_ABI } from '@/constants/abis';
+import { COLLATERAL_MANAGER_ABI, LIQUIDITY_POOL_ABI } from '@/constants/abis';
 
 export function useWalletConnect() {
     const { address, isConnected } = useAccount();
@@ -75,17 +75,28 @@ export function useWalletConnect() {
     }
 
     /**
-     * Repay a loan via plain ETH transfer to the treasury/repayment address.
-     * The backend records the repayment after verifying the tx on-chain.
+     * Repay a loan by calling repay() on the liquidity pool.
+     *
+     * Not a plain transfer: the pool has to know which loan the money settles, or
+     * the payment lands as an untracked donation and the debt stays open. The
+     * backend rejects a bare transfer for the same reason.
      */
     async function repayLoan(params: {
-        toAddress: string;
+        liquidityPoolAddress: string;
+        contractLoanId: number;
         amountEth: string;
     }): Promise<string> {
         await ensureNetwork();
 
+        const data = encodeFunctionData({
+            abi: LIQUIDITY_POOL_ABI,
+            functionName: 'repay',
+            args: [params.contractLoanId],
+        });
+
         const txHash = await sendTransactionAsync({
-            to: params.toAddress as `0x${string}`,
+            to: params.liquidityPoolAddress as `0x${string}`,
+            data,
             value: parseEther(params.amountEth),
         });
 

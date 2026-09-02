@@ -129,8 +129,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const savedUser = await getUser<User>();
 
             if (savedUser) {
-                // Validate with server
-                const response = await authService.getSession();
+                // Validate with server. A 401 may only mean the short-lived
+                // access token expired, so refresh once before clearing state.
+                let response;
+                try {
+                    response = await authService.getSession();
+                } catch {
+                    await authService.refreshAccessToken();
+                    response = await authService.getSession();
+                }
 
                 if (response.data.isAuthenticated && response.data.user) {
                     set({
