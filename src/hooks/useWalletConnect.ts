@@ -1,5 +1,7 @@
+import { waitForTransactionReceipt } from '@wagmi/core';
 import {
     useAccount,
+    useConfig,
     useChainId,
     useSwitchChain,
     useSendTransaction,
@@ -15,6 +17,7 @@ export function useWalletConnect() {
     const { switchChainAsync } = useSwitchChain();
     const { sendTransactionAsync } = useSendTransaction();
     const { signMessageAsync } = useSignMessage();
+    const config = useConfig();
 
     /** Ensure wallet is on the app chain before any transaction */
     async function ensureNetwork(): Promise<void> {
@@ -111,9 +114,26 @@ export function useWalletConnect() {
         return signMessageAsync({ message });
     }
 
+    /**
+     * Wait until the transaction is mined, so the backend can find it. A timeout
+     * is not an error: the backend is asked again anyway.
+     */
+    async function waitForConfirmation(hash: string): Promise<void> {
+        try {
+            await waitForTransactionReceipt(config, {
+                hash: hash as `0x${string}`,
+                chainId: appChain.id,
+                timeout: 120_000,
+            });
+        } catch (error) {
+            console.warn('[Wallet] Still waiting for confirmation:', error);
+        }
+    }
+
     return {
         address,
         isConnected,
+        waitForConfirmation,
         chainId,
         ensureNetwork,
         depositCollateral,

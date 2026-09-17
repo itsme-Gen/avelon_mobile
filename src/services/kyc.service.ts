@@ -3,6 +3,7 @@
  * Handles KYC profile submission, document uploads, and verification status.
  */
 import { File } from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { API_BASE_URL } from '@/config';
 import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
@@ -25,17 +26,31 @@ const MIME_BY_EXTENSION: Record<string, string> = {
  * the bytes along with the name and type the backend checks.
  */
 async function toFilePart(uri: string, fallbackName: string) {
-    const file = new File(uri);
-    const name = file.name || fallbackName;
-    const dot = name.lastIndexOf('.');
-    const extension = dot > 0 ? name.slice(dot).toLowerCase() : '';
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    let source = uri;
+    let name = new File(uri).name || fallbackName;
+    let extension = extensionOf(name);
+
+    // iPhone library photos can be HEIC, which the backend does not accept.
+    // Re-encode anything that is not already a supported type.
+    if (!MIME_BY_EXTENSION[extension]) {
+        const converted = await manipulateAsync(uri, [], { format: SaveFormat.JPEG, compress: 0.9 });
+        source = converted.uri;
+        name = `${name.slice(0, name.length - extension.length) || 'photo'}.jpg`;
+        extension = '.jpg';
+    }
+
+    const bytes = new Uint8Array(await new File(source).arrayBuffer());
 
     return {
-        name: extension ? name : `${name}.jpg`,
-        type: MIME_BY_EXTENSION[extension] ?? 'image/jpeg',
+        name,
+        type: MIME_BY_EXTENSION[extension],
         bytes: async () => bytes,
     };
+}
+
+function extensionOf(name: string): string {
+    const dot = name.lastIndexOf('.');
+    return dot > 0 ? name.slice(dot).toLowerCase() : '';
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -174,37 +189,59 @@ export async function uploadDocument(
     documentType: 'GOVERNMENT_ID' | 'GOVERNMENT_ID_BACK' | 'E_SIGNATURE' | 'PROOF_OF_INCOME' | 'PROOF_OF_ADDRESS',
 ): Promise<{ success: boolean; data?: DocumentUploadResponse['data']; error?: string }> {
     try {
-        const headers = await authHeaders();
+        const first = await postDocument(imageUri, documentType);
+        if (first.status !== 409) return first.result;
 
-        // Build multipart form data
-        const formData = new FormData();
+        // A document of this type is left from an earlier attempt (the app was
+        // closed mid-flow, or the user retook the photo). Replace it if the
+        // backend still allows that, which it does unless it was approved.
+        const replaced = await deletePendingDocument(documentType);
+        if (!replaced) return first.result;
 
-        formData.append(
-            'file',
-            (await toFilePart(imageUri, `${documentType}_${Date.now()}.jpg`)) as any,
-        );
-        formData.append('type', documentType);
-
-        const response = await authenticatedFetch(`${API_BASE_URL}/kyc/documents`, {
-            method: 'POST',
-            headers: {
-                ...headers,
-                // Don't set Content-Type — fetch will set it with the boundary for multipart
-            },
-            body: formData,
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            return { success: false, error: result.error?.message || 'Failed to upload document' };
-        }
-
-        return { success: true, data: result.data };
+        return (await postDocument(imageUri, documentType)).result;
     } catch (error) {
         console.error('[KYC] Document upload error:', error);
         return { success: false, error: 'Network error. Please try again.' };
     }
+}
+
+async function postDocument(imageUri: string, documentType: string) {
+    const formData = new FormData();
+    formData.append(
+        'file',
+        (await toFilePart(imageUri, `${documentType}_${Date.now()}.jpg`)) as any,
+    );
+    formData.append('type', documentType);
+
+    // Content-Type is left to fetch so it can add the multipart boundary
+    const response = await authenticatedFetch(`${API_BASE_URL}/kyc/documents`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: formData,
+    });
+    const body = await response.json();
+
+    const result: { success: boolean; data?: DocumentUploadResponse['data']; error?: string } = response.ok
+        ? { success: true, data: body.data }
+        : { success: false, error: body.error?.message || 'Failed to upload document' };
+    return { status: response.status, result };
+}
+
+async function deletePendingDocument(documentType: string): Promise<boolean> {
+    const list = await authenticatedFetch(`${API_BASE_URL}/kyc/documents`, {
+        method: 'GET',
+        headers: await authHeaders(),
+    });
+    if (!list.ok) return false;
+    const documents = ((await list.json()).data ?? []) as { id: string; type: string; status: string }[];
+    const existing = documents.find((d) => d.type === documentType && d.status === 'PENDING');
+    if (!existing) return false;
+
+    const removed = await authenticatedFetch(`${API_BASE_URL}/kyc/documents/${encodeURIComponent(existing.id)}`, {
+        method: 'DELETE',
+        headers: await authHeaders(),
+    });
+    return removed.ok;
 }
 
 /**

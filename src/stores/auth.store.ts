@@ -5,7 +5,8 @@
 import { create } from 'zustand';
 import * as authService from '@/services/auth.service';
 import { registerDeviceToken, unregisterDeviceToken } from '@/services/notification.service';
-import { getUser, saveUser, clearAuthData } from '@/utils/storage';
+import { getUser, saveUser, clearAuthData, getRefreshToken } from '@/utils/storage';
+import { endWalletSession } from '@/utils/wallet-session';
 import { useVerificationStore } from '@/stores/verification.store';
 import type { User } from '@/services/auth.service';
 
@@ -108,6 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } catch {
             // Ignore logout errors - clear local state anyway
         } finally {
+            await endWalletSession();
             await clearAuthData();
             set({
                 user: null,
@@ -124,47 +126,55 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     checkSession: async () => {
         set({ isLoading: true });
 
-        try {
-            // First check local storage
-            const savedUser = await getUser<User>();
-
-            if (savedUser) {
-                // Validate with server. A 401 may only mean the short-lived
-                // access token expired, so refresh once before clearing state.
-                let response;
-                try {
-                    response = await authService.getSession();
-                } catch {
-                    await authService.refreshAccessToken();
-                    response = await authService.getSession();
-                }
-
-                if (response.data.isAuthenticated && response.data.user) {
-                    set({
-                        user: response.data.user,
-                        isAuthenticated: true,
-                        isLoading: false,
-                    });
-                    return;
-                }
-            }
-
-            // No valid session
+        const savedUser = await getUser<User>().catch(() => null);
+        if (!savedUser) {
             await clearAuthData();
-            set({
-                user: null,
-                isAuthenticated: false,
-                isLoading: false,
-            });
-        } catch {
-            // Session check failed - clear local state
-            await clearAuthData();
-            set({
-                user: null,
-                isAuthenticated: false,
-                isLoading: false,
-            });
+            set({ user: null, isAuthenticated: false, isLoading: false });
+            return;
         }
+
+        const signOut = async () => {
+            await clearAuthData();
+            set({ user: null, isAuthenticated: false, isLoading: false });
+        };
+        const signIn = async (user: User) => {
+            try { await saveUser(user); } catch { /* cached copy only */ }
+            set({ user, isAuthenticated: true, isLoading: false });
+        };
+        // No answer from the server is not a rejection. Keep the saved user and
+        // let the next request refresh the session.
+        const stayOffline = () => set({ user: savedUser, isAuthenticated: true, isLoading: false });
+
+        let session;
+        try {
+            session = await authService.getSession();
+        } catch {
+            return stayOffline();
+        }
+        if (session.data.isAuthenticated && session.data.user) {
+            return signIn(session.data.user);
+        }
+
+        // The access token lasts 15 minutes and the refresh token 7 days, so an
+        // expired access token is the usual reason for this answer.
+        if (!(await getRefreshToken().catch(() => null))) {
+            return signOut();
+        }
+        try {
+            await authService.refreshAccessToken();
+        } catch (error) {
+            const offline = error instanceof TypeError || /network/i.test(String(error));
+            return offline ? stayOffline() : signOut();
+        }
+        try {
+            session = await authService.getSession();
+        } catch {
+            return stayOffline();
+        }
+        if (session.data.isAuthenticated && session.data.user) {
+            return signIn(session.data.user);
+        }
+        return signOut();
     },
 
     /**

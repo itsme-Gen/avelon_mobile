@@ -42,6 +42,8 @@ export interface Loan {
     principalOwed: string;
     interestOwed: string;
     feesOwed: string;
+    // Exact sum of the three above, as a decimal string
+    totalOwed?: string;
     duration: number;
     interestRate: number;
     creditScoreSnapshot: number;
@@ -101,7 +103,15 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
 /**
  * Fetch blockchain contract addresses (CollateralManager, etc.)
  */
-export async function getBlockchainStatus(): Promise<{ success: boolean; data?: { contracts: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null; liquidityPool: string | null; treasury: string | null } }; error?: string }> {
+export interface BlockchainStatus {
+    connected: boolean;
+    contractsDeployed?: boolean;
+    chainId?: number | string;
+    // Absent when the node is unreachable
+    contracts?: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null; liquidityPool: string | null; treasury: string | null };
+}
+
+export async function getBlockchainStatus(): Promise<{ success: boolean; data?: BlockchainStatus; error?: string }> {
     try {
         const response = await authenticatedFetch(`${API_BASE_URL}/loans/blockchain/status`, {
             method: 'GET',
@@ -238,12 +248,12 @@ export async function getWallets(): Promise<{ success: boolean; data?: Wallet[];
 }
 
 /**
- * Confirm collateral deposit — backend verifies txHash on Base Sepolia and activates loan
+ * Record a collateral deposit — the backend verifies the transaction and pays out
  */
 export async function depositCollateral(
     loanId: string,
     txHash: string
-): Promise<{ success: boolean; data?: { status: string; collateralDeposited: string }; error?: string }> {
+): Promise<{ success: boolean; message?: string; data?: { status: string; collateralDeposited: string; payoutPending?: boolean }; error?: string }> {
     try {
         const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/collateral`, {
             method: 'POST',
@@ -257,7 +267,7 @@ export async function depositCollateral(
             return { success: false, error: result.error?.message || 'Failed to record collateral deposit' };
         }
 
-        return { success: true, data: result.data };
+        return { success: true, message: result.message, data: result.data };
     } catch (error) {
         console.error('[Loan] Deposit collateral error:', error);
         return { success: false, error: 'Network error. Please try again.' };
@@ -265,13 +275,13 @@ export async function depositCollateral(
 }
 
 /**
- * Confirm loan repayment — backend verifies txHash on Base Sepolia and records repayment
+ * Record a repayment — the backend verifies the transaction against the pool
  */
 export async function repayLoan(
     loanId: string,
     amount: string,
     txHash: string
-): Promise<{ success: boolean; data?: { remainingOwed: string; isFullyRepaid: boolean }; error?: string }> {
+): Promise<{ success: boolean; data?: { remainingOwed: string; isFullyRepaid: boolean; collateralReleasePending?: boolean }; error?: string }> {
     try {
         const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/repay`, {
             method: 'POST',
@@ -293,7 +303,7 @@ export async function repayLoan(
 }
 
 /**
- * Cancel a pending loan (only allowed in PENDING_COLLATERAL status)
+ * Withdraw an application under review, or cancel an approved loan before collateral
  */
 export async function cancelLoan(
     loanId: string

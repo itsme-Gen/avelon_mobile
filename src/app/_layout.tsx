@@ -135,8 +135,10 @@ export default function RootLayout() {
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data;
+        // Loan updates open the loan list, which shows the right next step for
+        // any status (deposit, repay, or just the result)
         if (data?.loanId && typeof data.loanId === "string") {
-          router.push({ pathname: "/loan-repayment", params: { loanId: data.loanId } });
+          router.push("/(tabs)/Records");
           return;
         }
         router.push(notificationsRoute);

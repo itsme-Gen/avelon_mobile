@@ -3,7 +3,7 @@ import { useToast } from "@/components/toast";
 import * as loanService from "@/services/loan.service";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -138,10 +138,24 @@ export default function LoanApplication() {
   const planId = params.planId || "";
   const loanTitle = params.title || "Starting Loan Plan";
   const loanAmount = Number(params.amount) || 0;
+  // Sent as the exact decimal the plan screen chose; a float can print as 1e-7
+  const amountParam = (params.amount ?? "").trim();
+  const amountString = /^\d+(\.\d{1,18})?$/.test(amountParam)
+    ? amountParam
+    : loanAmount.toFixed(8).replace(/\.?0+$/, "");
   const interestRate = params.interest || "5%";
   const duration = params.duration || "30";
 
   const [purpose, setPurpose] = useState("");
+  // The loan is tied to this wallet; collateral and repayments must come from it
+  const [loanWallet, setLoanWallet] = useState<string | null>(null);
+
+  useEffect(() => {
+    loanService.getWallets().then((res) => {
+      const wallet = res.data?.find((w) => w.isPrimary) ?? res.data?.[0];
+      setLoanWallet(wallet?.address ?? null);
+    });
+  }, []);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,12 +186,9 @@ export default function LoanApplication() {
     (interestRate || "0").replace(/%/g, "").trim(),
   );
   const durationDays = Number(duration) || 30;
-  const monthsCount = Math.max(1, Math.round(durationDays / 30));
   const totalInterest = principalAmount * (interestRateValue / 100) * (durationDays / 365);
-  const monthlyRepayment = monthsCount
-    ? (principalAmount + totalInterest) / monthsCount
-    : 0;
-  const formattedMonthlyRepayment = `${monthlyRepayment.toFixed(6)} ETH`;
+  // One payment at the end of the term, not monthly instalments
+  const formattedTotalDue = `${(principalAmount + totalInterest).toFixed(6)} ETH`;
   const handleApply = async () => {
     if (!planId) {
       setAlert({
@@ -216,7 +227,7 @@ export default function LoanApplication() {
 
       const result = await loanService.applyForLoan({
         planId,
-        amount: String(loanAmount),
+        amount: amountString,
         duration: durationDays,
         walletId,
         purpose: purpose.trim(),
@@ -376,12 +387,17 @@ export default function LoanApplication() {
           </View>
         </View>
 
-        {/* Monthly Repayment */}
+        {/* Amount due */}
         <View className="mx-5 mt-8 items-center">
-          <Text className="text-sm text-gray-500 mb-1">Monthly Repayment:</Text>
+          <Text className="text-sm text-gray-500 mb-1">Total due in {durationDays} days:</Text>
           <Text className="text-2xl font-bold text-gray-900">
-            {formattedMonthlyRepayment}
+            {formattedTotalDue}
           </Text>
+          {loanWallet && (
+            <Text className="text-xs text-gray-400 mt-2 text-center">
+              Uses wallet {loanWallet.slice(0, 8)}…{loanWallet.slice(-6)}. Deposit and repay from this wallet.
+            </Text>
+          )}
         </View>
       </ScrollView>
 

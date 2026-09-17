@@ -7,6 +7,8 @@ import type { WalletBalance, WalletInfo } from "@/services/wallet.service";
 import * as walletService from "@/services/wallet.service";
 import { useVerificationStore } from "@/stores/verification.store";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
+import { needsVerification } from "@/utils/wallet-link";
+import * as loanService from "@/services/loan.service";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppKit } from "@/hooks/useAppKit";
 import { useRouter } from "expo-router";
@@ -50,6 +52,9 @@ export default function WalletScreen() {
   const { disconnectAsync } = useDisconnect();
 
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
+  // Until this is true, a restored wallet session must not trigger a signature
+  const [walletsLoaded, setWalletsLoaded] = useState(false);
+  const [networkProblem, setNetworkProblem] = useState<string | null>(null);
   const [balances, setBalances] = useState<WalletBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -79,7 +84,10 @@ export default function WalletScreen() {
         walletService.getWallets(),
         walletService.getBalances(),
       ]);
-      if (walletsRes.success && walletsRes.data) setWallets(walletsRes.data);
+      if (walletsRes.success && walletsRes.data) {
+        setWallets(walletsRes.data);
+        setWalletsLoaded(true);
+      }
       if (balancesRes.success && balancesRes.data)
         setBalances(balancesRes.data);
     } catch (error) {
@@ -108,14 +116,28 @@ export default function WalletScreen() {
     fetchMarketData();
   }, [fetchWalletData, fetchMarketData]);
 
+  // Catch a build pointed at a different chain, or a demo node restarted
+  // without redeploying, before the user signs anything
+  useEffect(() => {
+    loanService.getBlockchainStatus().then((res) => {
+      const status = res.data;
+      if (!res.success || !status) return;
+      if (status.connected === false) {
+        setNetworkProblem("The lending network is unreachable right now. Loans and repayments will wait until it is back.");
+      } else if (status.chainId !== undefined && Number(status.chainId) !== appChain.id) {
+        setNetworkProblem(`This app is set up for chain ${appChain.id} but the server uses chain ${status.chainId}. Update the app before using your wallet.`);
+      } else if (status.contractsDeployed === false) {
+        setNetworkProblem("The lending contracts are not available on the network. Please try again later.");
+      } else {
+        setNetworkProblem(null);
+      }
+    });
+  }, []);
+
   // Auto-register wallet with backend when WalletConnect connects
   useEffect(() => {
     if (!wcConnected || !wcAddress) return;
-
-    const alreadyRegistered = wallets.some(
-      (w) => w.address.toLowerCase() === wcAddress.toLowerCase(),
-    );
-    if (alreadyRegistered) return;
+    if (!needsVerification({ walletsLoaded, wallets, address: wcAddress, chainId: appChain.id })) return;
 
     const registerWcWallet = async () => {
       setIsConnecting(true);
@@ -176,10 +198,10 @@ export default function WalletScreen() {
     };
 
     registerWcWallet();
-  // This effect reacts only to WalletConnect identity transitions. Including
-  // the registration callbacks or wallet list would repeat signature prompts.
+  // Runs on WalletConnect identity changes and once the wallet list first loads.
+  // The list itself is left out: re-running on every refresh would repeat prompts.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wcConnected, wcAddress]);
+  }, [wcConnected, wcAddress, walletsLoaded]);
 
   // openAppKit rejects when the session is never approved, and nothing else in
   // this screen would notice: the effect above only runs once a wallet is
@@ -387,6 +409,12 @@ export default function WalletScreen() {
           }}
         >
           {renderVerifyBanner}
+
+          {networkProblem && (
+            <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
+              <Text className="text-[13px] text-red-700">{networkProblem}</Text>
+            </View>
+          )}
 
           {/* Connecting overlay */}
           {isConnecting && (
