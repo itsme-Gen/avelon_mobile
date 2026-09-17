@@ -31,3 +31,5 @@ export const PagerView = forwardRef<{ setPage: (index: number) => void }, Props>
         );
     }
 );
+
+PagerView.displayName = 'PagerView';

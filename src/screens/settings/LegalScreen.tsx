@@ -26,8 +26,9 @@ export default function LegalScreen({ onBack }: LegalScreenProps) {
             By using Avelon, you agree to our terms of service. Avelon provides a blockchain-based micro-lending platform.
             Users must be at least 18 years of age and complete identity verification (KYC) before accessing lending services.
             {"\n\n"}
-            All loans are facilitated through smart contracts on the Ethereum blockchain. Interest rates, collateral requirements,
-            and repayment terms are determined by the selected loan plan and are disclosed before loan confirmation.
+            Loan and collateral events use smart contracts on the configured test network. Some administrative and repayment
+            records are also maintained by the backend. Interest rates, collateral requirements, and repayment terms are shown
+            before confirmation.
             {"\n\n"}
             Avelon reserves the right to modify these terms at any time. Continued use of the platform constitutes acceptance
             of updated terms.
@@ -40,10 +41,10 @@ export default function LegalScreen({ onBack }: LegalScreenProps) {
             Avelon collects personal information necessary for identity verification and loan processing, including your name,
             email address, phone number, and government-issued identification documents.
             {"\n\n"}
-            Your data is encrypted in transit and at rest. We do not sell or share your personal information with third parties
-            except as required by law or necessary for platform operations.
+            This capstone prototype uses encrypted network transport where configured, access controls, and audit records. It is
+            not certified for production storage of real identity documents. Use synthetic demonstration data only.
             {"\n\n"}
-            You may request deletion of your account and associated data by contacting our support team.
+            Account-deletion and formal data-retention workflows are not yet implemented in this prototype.
           </Text>
         </View>
 

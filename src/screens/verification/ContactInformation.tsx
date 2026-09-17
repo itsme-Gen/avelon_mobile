@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { ProgressDots } from "../../components/progressdot/ProgressDot";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVerificationStore } from "@/stores/verification.store";
+import { validateEmail } from "@/utils/validation.util";
 
 export default function ContactInformation() {
     const savedContactInfo = useVerificationStore((s) => s.contactInfo);
@@ -12,10 +13,13 @@ export default function ContactInformation() {
     const [email, setEmail] = useState(savedContactInfo.secondaryEmail || "");
     const insets = useSafeAreaInsets();
 
-    // Check if all required fields are filled
+    const normalizedPhone = contactNumber.replace(/[\s()-]/g, "");
+    const phoneValid = /^\+?[1-9]\d{7,14}$/.test(normalizedPhone);
+    const emailValid = email.trim() === "" || validateEmail(email) === "";
+
     const isFormValid = useMemo(() => {
-        return contactNumber.trim() !== "" && email.trim() !== "";
-    }, [contactNumber, email]);
+        return phoneValid && emailValid;
+    }, [phoneValid, emailValid]);
 
     return (
         <View className="flex-1 bg-gray-50 px-6 pt-12">
@@ -25,10 +29,8 @@ export default function ContactInformation() {
                     Contact Information
                 </Text>
                 <Text className="text-md text-gray-600 leading-5">
-                    Please provide your phone number and email address below. 
-                    These details will be used to send updates and keep you 
-                    informed about our services. You can update this information 
-                    anytime from your account settings, or skip this step if you wish.
+                    A contact number is required for account and loan updates.
+                    A secondary email is optional.
                 </Text>
             </View>
 
@@ -36,7 +38,7 @@ export default function ContactInformation() {
             <View className="mb-8">
                 <TextInput
                     className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 text-base text-gray-900 mb-4"
-                    placeholder="Contact Number"
+                    placeholder="Contact Number *"
                     placeholderTextColor="#9CA3AF"
                     value={contactNumber}
                     onChangeText={setContactNumber}
@@ -45,7 +47,7 @@ export default function ContactInformation() {
                 
                 <TextInput
                     className="bg-white border border-gray-300 rounded-lg px-4 py-3.5 text-base text-gray-900"
-                    placeholder="Secondary Email Address"
+                    placeholder="Secondary Email Address (optional)"
                     placeholderTextColor="#9CA3AF"
                     value={email}
                     onChangeText={setEmail}
@@ -82,7 +84,7 @@ export default function ContactInformation() {
                     activeOpacity={0.8}
                     onPress={() => {
                         if (isFormValid) {
-                            setContactInfo({ contactNumber, secondaryEmail: email });
+                            setContactInfo({ contactNumber: normalizedPhone, secondaryEmail: email.trim() });
                             router.push("/(verification)/IDVerification");
                         }
                     }}

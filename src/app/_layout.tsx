@@ -1,6 +1,7 @@
 import "@/polyfills/wallet-compat";
+import { ToastProvider } from "@/components/toast";
 import { WalletProvider } from "@/providers/WalletProvider";
-import { setupAndroidChannel } from "@/services/notification.service";
+import { getNotifications, setupAndroidChannel } from "@/services/notification.service";
 import {
     Syne_400Regular,
     Syne_500Medium,
@@ -9,11 +10,12 @@ import {
     Syne_800ExtraBold,
 } from "@expo-google-fonts/syne";
 import { useFonts } from "expo-font";
-import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
+import type { Href } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
 import { LogBox, StyleSheet, Text, TextInput } from "react-native";
+import { useAuthStore } from "@/stores/auth.store";
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
@@ -30,6 +32,8 @@ const syneFontMap: Record<string, string> = {
   bold: "Syne_700Bold",
 };
 
+const notificationsRoute = "/notifications" as Href;
+
 // Keep native splash visible until we manually hide it
 NativeSplashScreen.preventAutoHideAsync();
 
@@ -37,6 +41,8 @@ NativeSplashScreen.preventAutoHideAsync();
 LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 
 export default function RootLayout() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const checkSession = useAuthStore((state) => state.checkSession);
   const [fontsLoaded, fontError] = useFonts({
     Syne_400Regular,
     Syne_500Medium,
@@ -44,10 +50,14 @@ export default function RootLayout() {
     Syne_700Bold,
     Syne_800ExtraBold,
   });
-  const notificationListener = useRef<Notifications.EventSubscription | null>(
-    null,
-  );
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  // Structural type so this file never imports expo-notifications, which throws
+  // on load in Expo Go.
+  const notificationListener = useRef<{ remove: () => void } | null>(null);
+  const responseListener = useRef<{ remove: () => void } | null>(null);
+
+  useEffect(() => {
+    checkSession().catch(() => undefined);
+  }, [checkSession]);
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
@@ -108,6 +118,10 @@ export default function RootLayout() {
     // Set up Android notification channel
     setupAndroidChannel();
 
+    // null in Expo Go, where push notifications are unavailable
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+
     // Listener: notification received while app is in foreground
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
@@ -121,8 +135,13 @@ export default function RootLayout() {
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data;
-        console.log("[Notification tapped]", data);
-        // TODO: navigate based on data.type (e.g. loan update, repayment reminder)
+        // Loan updates open the loan list, which shows the right next step for
+        // any status (deposit, repay, or just the result)
+        if (data?.loanId && typeof data.loanId === "string") {
+          router.push("/(tabs)/Records");
+          return;
+        }
+        router.push(notificationsRoute);
       });
 
     return () => {
@@ -137,14 +156,21 @@ export default function RootLayout() {
 
   return (
     <WalletProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="loan-application" />
-        <Stack.Screen name="collateral-deposit" />
-        <Stack.Screen name="loan-repayment" />
-      </Stack>
+      <ToastProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Protected guard={isAuthenticated}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(verification)" />
+            <Stack.Screen name="(settings)" />
+            <Stack.Screen name="loan-application" />
+            <Stack.Screen name="collateral-deposit" />
+            <Stack.Screen name="loan-repayment" />
+            <Stack.Screen name="notifications" />
+          </Stack.Protected>
+        </Stack>
+      </ToastProvider>
     </WalletProvider>
   );
 }

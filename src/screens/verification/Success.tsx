@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useVerificationStore } from '@/stores/verification.store';
 
 export default function Success() {
-    const setKycStatus = useVerificationStore((state) => state.setKycStatus);
+    const checkKycStatus = useVerificationStore((state) => state.checkKycStatus);
     const resetFormData = useVerificationStore((state) => state.resetFormData);
 
     return (
@@ -28,8 +28,8 @@ export default function Success() {
 
             {/* Continue Button */}
             <TouchableOpacity
-                onPress={() => {
-                    setKycStatus("PENDING_KYC");
+                onPress={async () => {
+                    await checkKycStatus();
                     resetFormData();
                     router.replace("/(tabs)/Home");
                 }}

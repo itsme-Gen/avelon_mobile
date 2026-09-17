@@ -11,6 +11,7 @@ import {
     RefreshControl,
     ScrollView,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -113,6 +114,9 @@ export default function LoanPlans() {
   const [selectedAmountByPlan, setSelectedAmountByPlan] = useState<
     Record<string, number>
   >({});
+  const [amountDraftByPlan, setAmountDraftByPlan] = useState<
+    Record<string, string>
+  >({});
   const [agreedTermsByPlan, setAgreedTermsByPlan] = useState<
     Record<string, boolean>
   >({});
@@ -124,6 +128,41 @@ export default function LoanPlans() {
   });
 
   const formatEth = (value?: number) => `${Number(value ?? 0).toFixed(6)} ETH`;
+
+  const clampAmount = (plan: LoanPlan, value: number) =>
+    Number(
+      Math.min(plan.maxAmount, Math.max(plan.minAmount, value)).toFixed(6),
+    );
+
+  /** What the user is actually asking for, draft text winning over the committed number. */
+  const effectiveAmount = (plan: LoanPlan): number | null => {
+    const draft = amountDraftByPlan[plan.id];
+    if (draft === undefined) return selectedAmountByPlan[plan.id] ?? plan.minAmount;
+    const parsed = Number(draft);
+    return draft.trim() === "" || Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const onAmountChange = (plan: LoanPlan, text: string) => {
+    // digits and a single decimal point only — decimal-pad still lets some
+    // keyboards through with commas or a second dot
+    const cleaned = text.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+    setAmountDraftByPlan((prev) => ({ ...prev, [plan.id]: cleaned }));
+  };
+
+  const commitAmount = (plan: LoanPlan) => {
+    const draft = amountDraftByPlan[plan.id];
+    if (draft === undefined) return;
+    const parsed = Number(draft);
+    const next =
+      draft.trim() === "" || Number.isNaN(parsed)
+        ? (selectedAmountByPlan[plan.id] ?? plan.minAmount)
+        : clampAmount(plan, parsed);
+    setSelectedAmountByPlan((prev) => ({ ...prev, [plan.id]: next }));
+    setAmountDraftByPlan((prev) => {
+      const { [plan.id]: _drop, ...rest } = prev;
+      return rest;
+    });
+  };
 
   const formatDurationLabel = (days: number) => {
     if (days % 30 === 0) {
@@ -140,7 +179,8 @@ export default function LoanPlans() {
   ) => {
     const monthsCount = Math.max(1, Math.round(durationDays / 30));
     const intervalDays = Math.max(1, Math.round(durationDays / monthsCount));
-    const totalWithInterest = amount * (1 + plan.interestRate / 100);
+    const proratedInterest = amount * (plan.interestRate / 100) * (durationDays / 365);
+    const totalWithInterest = amount + proratedInterest;
     const installment = totalWithInterest / monthsCount;
 
     return Array.from({ length: monthsCount }).map((_, index) => {
@@ -166,13 +206,7 @@ export default function LoanPlans() {
     try {
       const result = await loanService.getLoanPlans();
       if (result.success && result.data) {
-        const starterOnly = result.data.filter((plan) =>
-          plan.name.toLowerCase().includes("starter"),
-        );
-        const usablePlans = starterOnly.length
-          ? starterOnly
-          : result.data.slice(0, 1);
-        setPlans(usablePlans);
+        setPlans(result.data);
       }
     } catch (error) {
       console.error("[LoanPlans] Fetch error:", error);
@@ -247,7 +281,9 @@ export default function LoanPlans() {
 
   const handleLoanPress = (plan: LoanPlan) => {
     const chosenDuration = selectedDurationByPlan[plan.id];
-    const chosenAmount = selectedAmountByPlan[plan.id] ?? plan.maxAmount;
+    // Read the draft, not just the committed value — Apply can be tapped
+    // without the field ever losing focus
+    const chosenAmount = effectiveAmount(plan);
 
     if (!isVerified) {
       setInfoModal({
@@ -271,6 +307,19 @@ export default function LoanPlans() {
       return;
     }
 
+    if (
+      chosenAmount === null ||
+      chosenAmount < plan.minAmount ||
+      chosenAmount > plan.maxAmount
+    ) {
+      setInfoModal({
+        visible: true,
+        title: "Amount out of range",
+        message: `Enter an amount between ${formatEth(plan.minAmount)} and ${formatEth(plan.maxAmount)}.`,
+      });
+      return;
+    }
+
     if (!agreedTermsByPlan[plan.id]) {
       setTermsModalPlanId(plan.id);
       return;
@@ -281,7 +330,7 @@ export default function LoanPlans() {
       params: {
         planId: plan.id,
         title: plan.name,
-        amount: `${Number(chosenAmount).toFixed(6)} ETH`,
+        amount: String(chosenAmount),
         interest: `${plan.interestRate}%`,
         duration: String(chosenDuration),
       },
@@ -289,13 +338,12 @@ export default function LoanPlans() {
   };
 
   const adjustAmount = (plan: LoanPlan, delta: number) => {
-    setSelectedAmountByPlan((prev) => {
-      const current = prev[plan.id] ?? plan.minAmount;
-      const nextAmount = Math.min(
-        plan.maxAmount,
-        Math.max(plan.minAmount, current + delta),
-      );
-      return { ...prev, [plan.id]: Number(nextAmount.toFixed(6)) };
+    const base = effectiveAmount(plan) ?? selectedAmountByPlan[plan.id] ?? plan.minAmount;
+    const nextAmount = clampAmount(plan, base + delta);
+    setSelectedAmountByPlan((prev) => ({ ...prev, [plan.id]: nextAmount }));
+    setAmountDraftByPlan((prev) => {
+      const { [plan.id]: _drop, ...rest } = prev;
+      return rest;
     });
   };
 
@@ -354,7 +402,7 @@ export default function LoanPlans() {
             </Text>
 
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>
@@ -407,6 +455,11 @@ export default function LoanPlans() {
                   const selectedDuration = selectedDurationByPlan[plan.id];
                   const selectedAmount =
                     selectedAmountByPlan[plan.id] ?? plan.minAmount;
+                  const pendingAmount = effectiveAmount(plan);
+                  const amountOutOfRange =
+                    pendingAmount === null ||
+                    pendingAmount < plan.minAmount ||
+                    pendingAmount > plan.maxAmount;
                   const schedulePreview = selectedDuration
                     ? buildSchedulePreview(
                         plan,
@@ -460,11 +513,30 @@ export default function LoanPlans() {
                           <Text className="text-xs text-gray-500">
                             Borrow amount
                           </Text>
-                          <Text className="text-2xl font-bold text-gray-900 mt-1">
-                            {formatEth(selectedAmount)}
-                          </Text>
-                          <Text className="text-[11px] text-gray-500 mt-1">
-                            Maximum Amount: {formatEth(plan.maxAmount)}
+                          <View className="flex-row items-baseline mt-1">
+                            <TextInput
+                              value={
+                                amountDraftByPlan[plan.id] ??
+                                String(selectedAmount)
+                              }
+                              onChangeText={(text) => onAmountChange(plan, text)}
+                              onBlur={() => commitAmount(plan)}
+                              keyboardType="decimal-pad"
+                              inputMode="decimal"
+                              selectTextOnFocus
+                              accessibilityLabel="Borrow amount in ETH"
+                              className="text-2xl font-bold text-gray-900 text-center min-w-[90px] p-0"
+                            />
+                            <Text className="text-base font-semibold text-gray-500 ml-1">
+                              ETH
+                            </Text>
+                          </View>
+                          <Text
+                            className={`text-[11px] mt-1 ${
+                              amountOutOfRange ? "text-red-500" : "text-gray-500"
+                            }`}
+                          >
+                            {formatEth(plan.minAmount)} – {formatEth(plan.maxAmount)}
                           </Text>
                         </View>
 

@@ -9,6 +9,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+    AppState,
     ActivityIndicator,
     Dimensions,
     ScrollView,
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const [showVerification, setShowVerification] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const kycStatus = useVerificationStore((state) => state.kycStatus);
+  const kycRejectionReason = useVerificationStore((state) => state.kycRejectionReason);
   const checkKycStatus = useVerificationStore((state) => state.checkKycStatus);
   const resetFormData = useVerificationStore((state) => state.resetFormData);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -111,13 +113,13 @@ export default function HomeScreen() {
     }
   }, [isVerified, fetchPlans]);
 
-  // Poll KYC status every 5s while PENDING_KYC
+  // Refresh pending KYC at a modest interval and only while active.
   useEffect(() => {
     if (kycStatus === "PENDING_KYC") {
       checkKycStatus();
       pollRef.current = setInterval(() => {
-        checkKycStatus();
-      }, 5000);
+        if (AppState.currentState === "active") checkKycStatus();
+      }, 30000);
     }
     return () => {
       if (pollRef.current) {
@@ -136,9 +138,6 @@ export default function HomeScreen() {
   ];
 
   // Build chart data from API history
-  const chartPoints =
-    priceHistory.length > 0 ? priceHistory.map((p) => p.ethPricePHP) : [0];
-
   // Sample labels from history timestamps (show ~5 labels max)
   const labelStep = Math.max(1, Math.floor(priceHistory.length / 5));
   const chartLabels =
@@ -248,7 +247,8 @@ export default function HomeScreen() {
               Verification rejected
             </Text>
             <Text className="text-sm text-red-700 mt-1">
-              Please re-submit your documents with the correct information.
+              {kycRejectionReason ??
+                "Please re-submit your documents with the correct information."}
             </Text>
           </View>
           <TouchableOpacity
@@ -341,7 +341,7 @@ export default function HomeScreen() {
               </Text>
 
               <Text className="text-gray-600 text-center leading-6 mb-12">
-                To ensure secure access and the proper use of Avaion's features
+                To ensure secure access and the proper use of Avelon's features
                 and services, we kindly request that you verify your identity.
                 This verification is necessary to confirm your authenticity.
               </Text>
@@ -513,7 +513,7 @@ export default function HomeScreen() {
                         params: {
                           planId: plan.id,
                           title: plan.name,
-                          amount: `${plan.maxAmount} ETH`,
+                          amount: String(plan.maxAmount),
                           interest: `${plan.interestRate}%`,
                           duration: String(plan.durationOptions[0] || 30),
                         },

@@ -31,7 +31,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         visible: boolean;
         title: string;
         message?: string;
-        buttons: Array<{ text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }>;
+        buttons: { text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }[];
         icon?: keyof typeof Ionicons.glyphMap;
         iconColor?: string;
     }>({ visible: false, title: "", buttons: [] });

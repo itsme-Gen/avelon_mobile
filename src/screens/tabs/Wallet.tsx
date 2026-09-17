@@ -1,11 +1,14 @@
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
 import { useWalletConnect } from "@/hooks/useWalletConnect";
+import { appChain } from "@/config/chain";
 import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
 import * as marketService from "@/services/market.service";
 import type { WalletBalance, WalletInfo } from "@/services/wallet.service";
 import * as walletService from "@/services/wallet.service";
 import { useVerificationStore } from "@/stores/verification.store";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
+import { needsVerification } from "@/utils/wallet-link";
+import * as loanService from "@/services/loan.service";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppKit } from "@/hooks/useAppKit";
 import { useRouter } from "expo-router";
@@ -15,7 +18,6 @@ import {
     Dimensions,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -34,12 +36,8 @@ const chartWidth =
   analyticsCardPadding * 2 -
   chartSideMargin * 2;
 
-const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
-
 export default function WalletScreen() {
   const [showVerification, setShowVerification] = useState(false);
-  const [showManualConnect, setShowManualConnect] = useState(false);
-  const [addressInput, setAddressInput] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
@@ -54,6 +52,9 @@ export default function WalletScreen() {
   const { disconnectAsync } = useDisconnect();
 
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
+  // Until this is true, a restored wallet session must not trigger a signature
+  const [walletsLoaded, setWalletsLoaded] = useState(false);
+  const [networkProblem, setNetworkProblem] = useState<string | null>(null);
   const [balances, setBalances] = useState<WalletBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -83,7 +84,10 @@ export default function WalletScreen() {
         walletService.getWallets(),
         walletService.getBalances(),
       ]);
-      if (walletsRes.success && walletsRes.data) setWallets(walletsRes.data);
+      if (walletsRes.success && walletsRes.data) {
+        setWallets(walletsRes.data);
+        setWalletsLoaded(true);
+      }
       if (balancesRes.success && balancesRes.data)
         setBalances(balancesRes.data);
     } catch (error) {
@@ -112,20 +116,35 @@ export default function WalletScreen() {
     fetchMarketData();
   }, [fetchWalletData, fetchMarketData]);
 
+  // Catch a build pointed at a different chain, or a demo node restarted
+  // without redeploying, before the user signs anything
+  useEffect(() => {
+    loanService.getBlockchainStatus().then((res) => {
+      const status = res.data;
+      if (!res.success || !status) return;
+      if (status.connected === false) {
+        setNetworkProblem("The lending network is unreachable right now. Loans and repayments will wait until it is back.");
+      } else if (status.chainId !== undefined && Number(status.chainId) !== appChain.id) {
+        setNetworkProblem(`This app is set up for chain ${appChain.id} but the server uses chain ${status.chainId}. Update the app before using your wallet.`);
+      } else if (status.contractsDeployed === false) {
+        setNetworkProblem("The lending contracts are not available on the network. Please try again later.");
+      } else {
+        setNetworkProblem(null);
+      }
+    });
+  }, []);
+
   // Auto-register wallet with backend when WalletConnect connects
   useEffect(() => {
     if (!wcConnected || !wcAddress) return;
-
-    const alreadyRegistered = wallets.some(
-      (w) => w.address.toLowerCase() === wcAddress.toLowerCase(),
-    );
-    if (alreadyRegistered) return;
+    if (!needsVerification({ walletsLoaded, wallets, address: wcAddress, chainId: appChain.id })) return;
 
     const registerWcWallet = async () => {
       setIsConnecting(true);
       try {
         // Step 1: Request nonce from backend
-        const connectRes = await walletService.connectWallet(wcAddress);
+        const chainId = appChain.id;
+        const connectRes = await walletService.connectWallet(wcAddress, chainId);
         if (!connectRes.success || !connectRes.data?.message) {
           throw new Error(
             connectRes.error || "Failed to get verification message",
@@ -140,6 +159,7 @@ export default function WalletScreen() {
         // Step 3: Verify signature with backend
         const verifyRes = await walletService.verifyWallet(
           wcAddress,
+          chainId,
           signature,
           connectRes.data.message,
         );
@@ -178,43 +198,23 @@ export default function WalletScreen() {
     };
 
     registerWcWallet();
-  }, [wcConnected, wcAddress]);
+  // Runs on WalletConnect identity changes and once the wallet list first loads.
+  // The list itself is left out: re-running on every refresh would repeat prompts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wcConnected, wcAddress, walletsLoaded]);
 
-  // Manual address connection (fallback)
-  const handleManualConnect = async () => {
-    const trimmed = addressInput.trim();
-    if (!ETH_ADDRESS_REGEX.test(trimmed)) {
-      setAlert({
-        visible: true,
-        title: "Invalid Address",
-        message: "Please enter a valid Ethereum address (0x...)",
-        buttons: [{ text: "OK" }],
-        icon: "alert-circle",
-        iconColor: "#EF4444",
-      });
-      return;
-    }
-    setIsConnecting(true);
-    const result = await walletService.connectAndVerify(trimmed);
-    setIsConnecting(false);
-    if (result.success) {
-      setShowManualConnect(false);
-      setAddressInput("");
-      fetchWalletData();
-      fetchMarketData();
-      setAlert({
-        visible: true,
-        title: "Wallet Connected",
-        message: "Your wallet has been connected and verified successfully.",
-        buttons: [{ text: "OK" }],
-        icon: "checkmark-circle",
-        iconColor: "#10B981",
-      });
-    } else {
+  // openAppKit rejects when the session is never approved, and nothing else in
+  // this screen would notice: the effect above only runs once a wallet is
+  // already connected. Without this a failed connection is completely silent.
+  const handleConnectPress = async () => {
+    try {
+      await openAppKit();
+    } catch (error) {
+      console.error("[Wallet] AppKit open error:", error);
       setAlert({
         visible: true,
         title: "Connection Failed",
-        message: result.error || "Could not connect wallet.",
+        message: getWalletErrorMessage(error),
         buttons: [{ text: "OK" }],
         icon: "alert-circle",
         iconColor: "#EF4444",
@@ -374,7 +374,7 @@ export default function WalletScreen() {
             </Text>
 
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>
@@ -410,55 +410,14 @@ export default function WalletScreen() {
         >
           {renderVerifyBanner}
 
-          {/* Manual Connect Fallback */}
-          {showManualConnect && (
-            <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200">
-              <Text className="text-base font-bold text-gray-900 mb-3">
-                Connect Manually
-              </Text>
-              <Text className="text-sm text-gray-500 mb-3">
-                Enter your Ethereum wallet address
-              </Text>
-              <TextInput
-                className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 border border-gray-200 mb-3"
-                placeholder="0x..."
-                placeholderTextColor="#9CA3AF"
-                value={addressInput}
-                onChangeText={setAddressInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowManualConnect(false);
-                    setAddressInput("");
-                  }}
-                  className="flex-1 bg-gray-100 rounded-full py-3 items-center"
-                >
-                  <Text className="text-sm font-semibold text-gray-700">
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleManualConnect}
-                  disabled={isConnecting}
-                  className="flex-1 bg-black rounded-full py-3 items-center"
-                >
-                  {isConnecting ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text className="text-sm font-semibold text-white">
-                      Connect
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+          {networkProblem && (
+            <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
+              <Text className="text-[13px] text-red-700">{networkProblem}</Text>
             </View>
           )}
 
           {/* Connecting overlay */}
-          {isConnecting && !showManualConnect && (
+          {isConnecting && (
             <View className="bg-white rounded-2xl p-5 mb-4 border border-gray-200 items-center">
               <ActivityIndicator size="large" color="#f8893c" />
               <Text className="text-sm text-gray-600 mt-3">
@@ -498,7 +457,7 @@ export default function WalletScreen() {
 
               {/* Primary: WalletConnect */}
               <TouchableOpacity
-                onPress={() => openAppKit()}
+                onPress={handleConnectPress}
                 disabled={isConnecting}
                 style={{
                   backgroundColor: "rgba(255,255,255,0.22)",
@@ -515,12 +474,9 @@ export default function WalletScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Fallback: Manual address entry */}
-              <TouchableOpacity onPress={() => setShowManualConnect(true)}>
-                <Text className="text-[#ffeede] text-xs underline">
-                  Or enter address manually
-                </Text>
-              </TouchableOpacity>
+              <Text className="text-[#ffeede] text-xs text-center">
+                A signature is required to prove wallet ownership. No gas fee is charged.
+              </Text>
             </View>
           ) : (
             <>

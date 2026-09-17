@@ -121,7 +121,7 @@ export default function Profile() {
 
             {/* Description */}
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>

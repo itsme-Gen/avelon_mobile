@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/config';
+import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
 
 async function authHeaders(): Promise<HeadersInit> {
@@ -28,7 +29,7 @@ export interface WalletBalance {
 
 export async function getWallets(): Promise<{ success: boolean; data?: WalletInfo[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets`, {
             method: "GET",
             headers: await authHeaders(),
         });
@@ -45,7 +46,7 @@ export async function getWallets(): Promise<{ success: boolean; data?: WalletInf
 
 export async function getBalances(): Promise<{ success: boolean; data?: WalletBalance[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets/balances/all`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets/balances/all`, {
             method: "GET",
             headers: await authHeaders(),
         });
@@ -60,12 +61,12 @@ export async function getBalances(): Promise<{ success: boolean; data?: WalletBa
     }
 }
 
-export async function connectWallet(address: string): Promise<{ success: boolean; data?: { message: string; address: string }; error?: string }> {
+export async function connectWallet(address: string, chainId: number): Promise<{ success: boolean; data?: { message: string; address: string; chainId: number }; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets/connect`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets/connect`, {
             method: "POST",
             headers: await authHeaders(),
-            body: JSON.stringify({ address: address.toLowerCase() }),
+            body: JSON.stringify({ address: address.toLowerCase(), chainId }),
         });
         const result = await response.json();
         if (!response.ok) {
@@ -78,12 +79,12 @@ export async function connectWallet(address: string): Promise<{ success: boolean
     }
 }
 
-export async function verifyWallet(address: string, signature: string, message: string): Promise<{ success: boolean; data?: WalletInfo; error?: string }> {
+export async function verifyWallet(address: string, chainId: number, signature: string, message: string): Promise<{ success: boolean; data?: WalletInfo; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets/verify`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets/verify`, {
             method: "POST",
             headers: await authHeaders(),
-            body: JSON.stringify({ address: address.toLowerCase(), signature, message }),
+            body: JSON.stringify({ address: address.toLowerCase(), chainId, signature, message }),
         });
         const result = await response.json();
         if (!response.ok) {
@@ -96,27 +97,9 @@ export async function verifyWallet(address: string, signature: string, message: 
     }
 }
 
-export async function connectAndVerify(address: string): Promise<{ success: boolean; data?: WalletInfo; error?: string }> {
-    try {
-        const response = await fetch(`${API_BASE_URL}/wallets/connect-direct`, {
-            method: "POST",
-            headers: await authHeaders(),
-            body: JSON.stringify({ address: address.toLowerCase() }),
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            return { success: false, error: result.error?.message || "Connection failed" };
-        }
-        return { success: true, data: result.data };
-    } catch (error) {
-        console.error("[Wallet] Connect & verify error:", error);
-        return { success: false, error: "Network error. Please try again." };
-    }
-}
-
 export async function removeWallet(walletId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets/${encodeURIComponent(walletId)}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets/${encodeURIComponent(walletId)}`, {
             method: "DELETE",
             headers: await authHeaders(),
         });
@@ -133,7 +116,7 @@ export async function removeWallet(walletId: string): Promise<{ success: boolean
 
 export async function setPrimary(walletId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets/${encodeURIComponent(walletId)}/primary`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets/${encodeURIComponent(walletId)}/primary`, {
             method: "PUT",
             headers: await authHeaders(),
         });

@@ -3,6 +3,7 @@
  * Handles user profile retrieval and updates.
  */
 import { API_BASE_URL } from '@/config';
+import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -27,13 +28,13 @@ export interface UserProfile {
     completedLoansCount: number;
     createdAt: string;
     lastLoginAt: string | null;
-    wallets: Array<{
+    wallets: {
         id: string;
         address: string;
         isPrimary: boolean;
         isVerified: boolean;
         label: string | null;
-    }>;
+    }[];
 }
 
 export interface UserStats {
@@ -66,7 +67,7 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
  */
 export async function getProfile(): Promise<{ success: boolean; data?: UserProfile; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/users/me`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/users/me`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -91,7 +92,7 @@ export async function updateProfile(
     data: { name?: string; phone?: string; avatar?: string },
 ): Promise<{ success: boolean; data?: Partial<UserProfile>; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/users/me`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/users/me`, {
             method: 'PUT',
             headers: await authJsonHeaders(),
             body: JSON.stringify(data),
@@ -115,7 +116,7 @@ export async function updateProfile(
  */
 export async function getStats(): Promise<{ success: boolean; data?: UserStats; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/users/me/stats`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/users/me/stats`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });

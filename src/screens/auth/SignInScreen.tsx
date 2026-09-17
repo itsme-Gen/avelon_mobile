@@ -34,7 +34,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, clearError } = useAuthStore();
 
   const handleLogin = async () => {
     // Clear previous errors
@@ -56,6 +56,11 @@ export default function SignInScreen() {
     const success = await login(email.trim().toLowerCase(), password);
 
     if (success) {
+      // An account that never confirmed its email finishes that first
+      if (useAuthStore.getState().user?.status === "REGISTERED") {
+        router.replace(`/(auth)/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+        return;
+      }
       router.replace("/(tabs)/Home");
     } else {
       const errorMessage = useAuthStore.getState().error;

@@ -3,6 +3,7 @@
  * Handles loan plan retrieval, loan applications, and loan status.
  */
 import { API_BASE_URL } from '@/config';
+import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -41,10 +42,14 @@ export interface Loan {
     principalOwed: string;
     interestOwed: string;
     feesOwed: string;
+    // Exact sum of the three above, as a decimal string
+    totalOwed?: string;
     duration: number;
     interestRate: number;
     creditScoreSnapshot: number;
     status: string;
+    // Set only when an admin rejects the application
+    rejectionReason?: string | null;
     dueDate: string | null;
     repaidAt: string | null;
     createdAt: string;
@@ -73,6 +78,7 @@ export interface LoanApplicationData {
     amount: string;
     duration: number;
     walletId: string;
+    purpose: string;
 }
 
 export interface Wallet {
@@ -97,9 +103,17 @@ async function authJsonHeaders(): Promise<Record<string, string>> {
 /**
  * Fetch blockchain contract addresses (CollateralManager, etc.)
  */
-export async function getBlockchainStatus(): Promise<{ success: boolean; data?: { contracts: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null; treasury: string | null } }; error?: string }> {
+export interface BlockchainStatus {
+    connected: boolean;
+    contractsDeployed?: boolean;
+    chainId?: number | string;
+    // Absent when the node is unreachable
+    contracts?: { collateralManager: string | null; avelonLending: string | null; repaymentSchedule: string | null; liquidityPool: string | null; treasury: string | null };
+}
+
+export async function getBlockchainStatus(): Promise<{ success: boolean; data?: BlockchainStatus; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/blockchain/status`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/blockchain/status`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -122,7 +136,7 @@ export async function getBlockchainStatus(): Promise<{ success: boolean; data?: 
  */
 export async function getLoanPlans(): Promise<{ success: boolean; data?: LoanPlan[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/plans`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/plans`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -145,7 +159,7 @@ export async function getLoanPlans(): Promise<{ success: boolean; data?: LoanPla
  */
 export async function applyForLoan(data: LoanApplicationData): Promise<{ success: boolean; data?: Loan & { depositAddress?: string; instruction?: string }; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans`, {
             method: 'POST',
             headers: await authJsonHeaders(),
             body: JSON.stringify(data),
@@ -169,7 +183,7 @@ export async function applyForLoan(data: LoanApplicationData): Promise<{ success
  */
 export async function getLoans(): Promise<{ success: boolean; data?: Loan[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -192,7 +206,7 @@ export async function getLoans(): Promise<{ success: boolean; data?: Loan[]; err
  */
 export async function getLoanById(loanId: string): Promise<{ success: boolean; data?: Loan; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -215,7 +229,7 @@ export async function getLoanById(loanId: string): Promise<{ success: boolean; d
  */
 export async function getWallets(): Promise<{ success: boolean; data?: Wallet[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/wallets`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/wallets`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });
@@ -234,14 +248,14 @@ export async function getWallets(): Promise<{ success: boolean; data?: Wallet[];
 }
 
 /**
- * Confirm collateral deposit — backend verifies txHash on Base Sepolia and activates loan
+ * Record a collateral deposit — the backend verifies the transaction and pays out
  */
 export async function depositCollateral(
     loanId: string,
     txHash: string
-): Promise<{ success: boolean; data?: { status: string; collateralDeposited: string }; error?: string }> {
+): Promise<{ success: boolean; message?: string; data?: { status: string; collateralDeposited: string; payoutPending?: boolean }; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/collateral`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/collateral`, {
             method: 'POST',
             headers: await authJsonHeaders(),
             body: JSON.stringify({ txHash }),
@@ -253,7 +267,7 @@ export async function depositCollateral(
             return { success: false, error: result.error?.message || 'Failed to record collateral deposit' };
         }
 
-        return { success: true, data: result.data };
+        return { success: true, message: result.message, data: result.data };
     } catch (error) {
         console.error('[Loan] Deposit collateral error:', error);
         return { success: false, error: 'Network error. Please try again.' };
@@ -261,15 +275,15 @@ export async function depositCollateral(
 }
 
 /**
- * Confirm loan repayment — backend verifies txHash on Base Sepolia and records repayment
+ * Record a repayment — the backend verifies the transaction against the pool
  */
 export async function repayLoan(
     loanId: string,
     amount: string,
     txHash: string
-): Promise<{ success: boolean; data?: { remainingOwed: string; isFullyRepaid: boolean }; error?: string }> {
+): Promise<{ success: boolean; data?: { remainingOwed: string; isFullyRepaid: boolean; collateralReleasePending?: boolean }; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/repay`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/repay`, {
             method: 'POST',
             headers: await authJsonHeaders(),
             body: JSON.stringify({ amount, txHash }),
@@ -289,13 +303,13 @@ export async function repayLoan(
 }
 
 /**
- * Cancel a pending loan (only allowed in PENDING_COLLATERAL status)
+ * Withdraw an application under review, or cancel an approved loan before collateral
  */
 export async function cancelLoan(
     loanId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}`, {
             method: 'DELETE',
             headers: await authJsonHeaders(),
         });
@@ -320,7 +334,7 @@ export async function getLoanTransactions(
     loanId: string
 ): Promise<{ success: boolean; data?: LoanTransaction[]; error?: string }> {
     try {
-        const response = await fetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/transactions`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/loans/${encodeURIComponent(loanId)}/transactions`, {
             method: 'GET',
             headers: await authJsonHeaders(),
         });

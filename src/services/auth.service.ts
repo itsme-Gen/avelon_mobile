@@ -111,6 +111,17 @@ export async function verifyEmail(
 }
 
 /**
+ * Ask for a new verification code
+ * Calls: POST /api/v1/auth/resend-verification
+ */
+export async function resendVerification(email: string): Promise<{ success: boolean; message: string }> {
+    return apiRequest<{ success: boolean; message: string }>('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    });
+}
+
+/**
  * Login with email and password
  * Calls: POST /api/v1/auth/login
  */
@@ -154,6 +165,16 @@ export async function forgotPassword(email: string): Promise<{ success: boolean;
     return apiRequest('/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email }),
+    });
+}
+
+export async function validateResetToken(token: string): Promise<{
+    success: boolean;
+    data: { valid: boolean; email: string; expires: string };
+}> {
+    return apiRequest('/auth/validate-reset-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
     });
 }
 

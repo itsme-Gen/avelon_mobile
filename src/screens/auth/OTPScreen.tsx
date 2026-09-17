@@ -1,82 +1,107 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-    Text,
-    View,
-    Image,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    KeyboardAvoidingView,
-    Platform,
-    TouchableWithoutFeedback,
-    Keyboard,
-} from "react-native";
+import * as authService from "@/services/auth.service";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function OTPScreen() {
-    return (
-        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
-            <View style={{ flex: 1 }}>
-                {/* Scrollable Content */}
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={{ flex: 1 }}
-                >
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        contentContainerStyle={{
-                            paddingHorizontal: 24,
-                            paddingTop: 24,
-                            paddingBottom: 20,
-                        }}
-                    >
-                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                            <View>
-                                {/* LOGO */}
-                                <View className="items-center">
-                                    <Image
-                                        source={require("../../../assets/images/avelon_nobg.png")}
-                                        className="w-full h-48"
-                                        resizeMode="contain"
-                                    />
+  const { email } = useLocalSearchParams<{ email?: string }>();
+  const [otp, setOtp] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
-                                    {/* TITLE */}
-                                    <Text className="text-black text-3xl font-semibold mb-10">
-                                        Forgot Password
-                                    </Text>
-                                </View>
+  const handleVerify = async () => {
+    if (!/^\d{6}$/.test(otp)) {
+      Alert.alert("Invalid Code", "Enter the six-digit code from your email.");
+      return;
+    }
 
-                                <View className="mb-4">
-                                    <Text className="text-black font-bold text-lg ml-4 mb-2">
-                                        OTP
-                                    </Text>
-                                    <View className="flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2">
-                                        <Ionicons name="keypad-outline" size={20} color="gray" />
-                                        <TextInput
-                                            className="ml-2 flex-1 py-3"
-                                            placeholder="Enter OTP"
-                                            keyboardType="number-pad"
-                                            autoCapitalize="none"
-                                        />
-                                    </View>
-                                </View>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </ScrollView>
-                </KeyboardAvoidingView>
+    setIsLoading(true);
+    try {
+      await authService.validateResetToken(otp);
+      router.replace({
+        pathname: "/(auth)/forgot-password/reset",
+        params: { token: otp },
+      });
+    } catch (error) {
+      Alert.alert(
+        "Verification Failed",
+        error instanceof Error ? error.message : "The code is invalid or expired.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                {/* Fixed Bottom Section */}
-                <View className="mb-10 px-5 py-4 bg-white border-t border-gray-100">
-                    <TouchableOpacity
-                        className="bg-black w-full justify-center items-center py-4 rounded-full"
-                        onPress={() => router.push('/(auth)/forgot-password/reset')}
-                    >
-                        <Text className="text-white text-lg font-bold">Verify OTP</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </SafeAreaView>
-    );
+  const handleResend = async () => {
+    if (!email) {
+      router.replace("/(auth)/forgot-password");
+      return;
+    }
+    setIsResending(true);
+    try {
+      await authService.forgotPassword(email);
+      setOtp("");
+      Alert.alert("Code Sent", "If the account exists, a new reset code was sent.");
+    } catch (error) {
+      Alert.alert("Unable to Resend", error instanceof Error ? error.message : "Please try again later.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 px-6">
+        <TouchableOpacity className="mt-4 p-2 self-start" onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+
+        <View className="flex-1 justify-center">
+          <Text className="text-black text-3xl font-semibold text-center mb-3">Enter Reset Code</Text>
+          <Text className="text-gray-500 text-center mb-8">
+            Enter the six-digit code sent to {email || "your email address"}. It expires after one hour.
+          </Text>
+
+          <View className="flex-row items-center bg-[#ECECEC] rounded-full px-4 py-2">
+            <Ionicons name="keypad-outline" size={20} color="gray" />
+            <TextInput
+              className="ml-2 flex-1 py-3 text-center tracking-[8px]"
+              placeholder="000000"
+              keyboardType="number-pad"
+              maxLength={6}
+              value={otp}
+              onChangeText={(value) => setOtp(value.replace(/\D/g, ""))}
+              editable={!isLoading && !isResending}
+              textContentType="oneTimeCode"
+            />
+          </View>
+
+          <TouchableOpacity className="mt-5 self-center" onPress={handleResend} disabled={isResending || isLoading}>
+            <Text className="text-sm font-semibold text-[#e97830]">
+              {isResending ? "Sending…" : "Resend code"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          className={`w-full items-center py-4 rounded-full mb-10 ${isLoading ? "bg-gray-400" : "bg-black"}`}
+          onPress={handleVerify}
+          disabled={isLoading || isResending}
+        >
+          {isLoading ? <ActivityIndicator color="white" /> : <Text className="text-white text-lg font-bold">Verify Code</Text>}
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }

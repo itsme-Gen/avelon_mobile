@@ -1,15 +1,19 @@
 import {
     PagerView,
     type PagerViewOnPageSelectedEvent,
+// Expo resolves this module to its .native.tsx or .web.tsx implementation.
+// eslint-disable-next-line import/no-unresolved
 } from "@/components/PagerViewWrapper";
 import type { Loan, LoanTransaction } from "@/services/loan.service";
 import * as loanService from "@/services/loan.service";
 import { useVerificationStore } from "@/stores/verification.store";
+import { amountOwed, formatEth } from "@/utils/loan-amounts";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -20,6 +24,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const STATUS_COLORS: Record<string, string> = {
+  PENDING_APPROVAL: "bg-amber-400",
+  REJECTED: "bg-red-400",
   PENDING_COLLATERAL: "bg-yellow-400",
   COLLATERAL_DEPOSITED: "bg-blue-400",
   ACTIVE: "bg-green-500",
@@ -30,6 +36,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
+  PENDING_APPROVAL: "Awaiting Review",
+  REJECTED: "Rejected",
   PENDING_COLLATERAL: "Pending Collateral",
   COLLATERAL_DEPOSITED: "Collateral Deposited",
   ACTIVE: "Active",
@@ -40,6 +48,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string }> = {
+  PENDING_APPROVAL: { bg: "bg-amber-100", text: "text-amber-700" },
+  REJECTED: { bg: "bg-red-100", text: "text-red-700" },
   PENDING_COLLATERAL: { bg: "bg-yellow-100", text: "text-yellow-700" },
   COLLATERAL_DEPOSITED: { bg: "bg-blue-100", text: "text-blue-700" },
   ACTIVE: { bg: "bg-green-100", text: "text-green-700" },
@@ -84,6 +94,34 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
   const router = useRouter();
   const [transactions, setTransactions] = useState<LoanTransaction[]>([]);
   const [isLoadingTx, setIsLoadingTx] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const confirmCancel = () => {
+    const isApplication = loan.status === "PENDING_APPROVAL";
+    Alert.alert(
+      isApplication ? "Withdraw application?" : "Cancel this loan?",
+      isApplication
+        ? "The application will be withdrawn and you can apply again."
+        : "The approved loan will be cancelled. Do not send collateral afterwards.",
+      [
+        { text: "Keep it", style: "cancel" },
+        {
+          text: isApplication ? "Withdraw" : "Cancel loan",
+          style: "destructive",
+          onPress: async () => {
+            setIsCancelling(true);
+            const result = await loanService.cancelLoan(loan.id);
+            setIsCancelling(false);
+            if (result.success) {
+              onBack();
+            } else {
+              Alert.alert("Could not cancel", result.error ?? "Please try again.");
+            }
+          },
+        },
+      ],
+    );
+  };
 
   useEffect(() => {
     (async () => {
@@ -100,10 +138,9 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
     bg: "bg-gray-100",
     text: "text-gray-600",
   };
-  const totalOwed =
-    parseFloat(loan.principalOwed || "0") +
-    parseFloat(loan.interestOwed || "0") +
-    parseFloat(loan.feesOwed || "0");
+  // Exact to the wei: this is also the amount the repayment sends
+  const owed = amountOwed(loan);
+  const paidOff = loan.status === "ACTIVE" && owed === "0";
 
   return (
     <SafeAreaView
@@ -165,10 +202,10 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
                 value={new Date(loan.dueDate).toLocaleDateString()}
               />
             )}
-            {totalOwed > 0 && (
+            {owed !== "0" && (
               <DetailRow
                 label="Total Owed"
-                value={`${totalOwed.toFixed(6)} ETH`}
+                value={formatEth(owed)}
                 bold
               />
             )}
@@ -190,6 +227,36 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
         </View>
 
         {/* Action Buttons */}
+        {loan.status === "REJECTED" && loan.rejectionReason && (
+          <View className="mx-4 mt-4 bg-red-50 rounded-xl px-3 py-2">
+            <Text className="text-xs text-red-700">{loan.rejectionReason}</Text>
+          </View>
+        )}
+
+        {loan.status === "PENDING_APPROVAL" && (
+          <View className="mx-4 mt-4 bg-amber-50 rounded-xl px-3 py-2">
+            <Text className="text-xs text-amber-700">
+              An administrator is reviewing this application. You will be notified once it is decided.
+            </Text>
+          </View>
+        )}
+
+        {loan.status === "COLLATERAL_DEPOSITED" && (
+          <View className="mx-4 mt-4 bg-blue-50 rounded-xl px-3 py-2">
+            <Text className="text-xs text-blue-700">
+              Your stake is received. The payout is waiting on pool funds and will arrive in your wallet as soon as it is sent.
+            </Text>
+          </View>
+        )}
+
+        {paidOff && (
+          <View className="mx-4 mt-4 bg-green-50 rounded-xl px-3 py-2">
+            <Text className="text-xs text-green-700">
+              Fully repaid. Your stake is being returned to your wallet.
+            </Text>
+          </View>
+        )}
+
         {loan.status === "PENDING_COLLATERAL" && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
@@ -215,21 +282,33 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
           </View>
         )}
 
-        {loan.status === "ACTIVE" && (
+        {(loan.status === "PENDING_APPROVAL" || loan.status === "PENDING_COLLATERAL") && (
+          <View className="mx-4 mt-3">
+            <TouchableOpacity
+              onPress={confirmCancel}
+              disabled={isCancelling}
+              className="border border-gray-300 rounded-2xl py-3 items-center"
+            >
+              {isCancelling ? (
+                <ActivityIndicator size="small" color="#1F2937" />
+              ) : (
+                <Text className="text-gray-700 font-semibold">
+                  {loan.status === "PENDING_APPROVAL" ? "Withdraw Application" : "Cancel Loan"}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {loan.status === "ACTIVE" && !paidOff && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
               onPress={() => {
-                const raw =
-                  parseFloat(loan.principalOwed) +
-                  parseFloat(loan.interestOwed) +
-                  parseFloat(loan.feesOwed);
-                // Truncate (floor) to avoid floating-point rounding up past actual owed
-                const remainingOwed = (Math.floor(raw * 1e8) / 1e8).toString();
                 router.push({
                   pathname: "/loan-repayment",
                   params: {
                     loanId: loan.id,
-                    remainingOwed,
+                    remainingOwed: owed,
                     loanTitle: loan.plan?.name ?? "Loan",
                   },
                 });
@@ -483,7 +562,7 @@ export default function DocumentsScreen() {
             </Text>
 
             <Text className="text-gray-600 text-center leading-6 mb-12">
-              To ensure secure access and the proper use of Avaion's features
+              To ensure secure access and the proper use of Avelon's features
               and services, we kindly request that you verify your identity.
               This verification is necessary to confirm your authenticity.
             </Text>

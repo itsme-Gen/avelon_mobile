@@ -1,8 +1,9 @@
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
+import { useToast } from "@/components/toast";
 import * as loanService from "@/services/loan.service";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -125,6 +126,7 @@ function TermsAndConditionsModal({
 
 export default function LoanApplication() {
   const router = useRouter();
+  const toast = useToast();
   const params = useLocalSearchParams<{
     planId: string;
     title: string;
@@ -135,11 +137,25 @@ export default function LoanApplication() {
 
   const planId = params.planId || "";
   const loanTitle = params.title || "Starting Loan Plan";
-  const loanAmount = params.amount || "0.00001452 ETH";
+  const loanAmount = Number(params.amount) || 0;
+  // Sent as the exact decimal the plan screen chose; a float can print as 1e-7
+  const amountParam = (params.amount ?? "").trim();
+  const amountString = /^\d+(\.\d{1,18})?$/.test(amountParam)
+    ? amountParam
+    : loanAmount.toFixed(8).replace(/\.?0+$/, "");
   const interestRate = params.interest || "5%";
   const duration = params.duration || "30";
 
   const [purpose, setPurpose] = useState("");
+  // The loan is tied to this wallet; collateral and repayments must come from it
+  const [loanWallet, setLoanWallet] = useState<string | null>(null);
+
+  useEffect(() => {
+    loanService.getWallets().then((res) => {
+      const wallet = res.data?.find((w) => w.isPrimary) ?? res.data?.[0];
+      setLoanWallet(wallet?.address ?? null);
+    });
+  }, []);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,21 +181,14 @@ export default function LoanApplication() {
     setShowTerms(false);
   };
 
-  const principalAmount = Number(
-    (loanAmount || "0")
-      .replace(/ETH/i, "")
-      .replace(/[^0-9.]/g, "")
-      .trim(),
-  );
+  const principalAmount = loanAmount;
   const interestRateValue = Number(
     (interestRate || "0").replace(/%/g, "").trim(),
   );
   const durationDays = Number(duration) || 30;
-  const monthsCount = Math.max(1, Math.round(durationDays / 30));
-  const monthlyRepayment = monthsCount
-    ? (principalAmount * (1 + interestRateValue / 100)) / monthsCount
-    : 0;
-  const formattedMonthlyRepayment = `${monthlyRepayment.toFixed(6)} ETH`;
+  const totalInterest = principalAmount * (interestRateValue / 100) * (durationDays / 365);
+  // One payment at the end of the term, not monthly instalments
+  const formattedTotalDue = `${(principalAmount + totalInterest).toFixed(6)} ETH`;
   const handleApply = async () => {
     if (!planId) {
       setAlert({
@@ -210,19 +219,18 @@ export default function LoanApplication() {
         return;
       }
 
-      const walletId = walletResult.data[0].id;
+      const wallet = walletResult.data.find((item) => item.isPrimary) ?? walletResult.data[0];
+      const walletId = wallet.id;
 
       // Parse duration to number of days (e.g., "30" -> 30, passed from LoanPlans screen)
       const durationDays = parseInt(duration, 10) || 30;
 
-      // Parse amount - strip " ETH" suffix if present
-      const amountValue = loanAmount.replace(/\s*ETH$/i, "").trim();
-
       const result = await loanService.applyForLoan({
         planId,
-        amount: amountValue,
+        amount: amountString,
         duration: durationDays,
         walletId,
+        purpose: purpose.trim(),
       });
 
       if (!result.success) {
@@ -237,36 +245,11 @@ export default function LoanApplication() {
         return;
       }
 
-      setAlert({
-        visible: true,
-        title: "Loan Applied",
-        message: "Your loan application has been submitted. Deposit collateral to activate it.",
-        icon: "checkmark-circle-outline",
-        iconColor: "#10B981",
-        buttons: [
-          {
-            text: "Deposit Collateral",
-            onPress: () => {
-              const loan = result.data!;
-              router.replace({
-                pathname: "/collateral-deposit",
-                params: {
-                  loanId: loan.id,
-                  contractLoanId: String(loan.contractLoanId ?? ""),
-                  collateralRequired: loan.collateralRequired,
-                  depositAddress: loan.depositAddress ?? "",
-                  loanTitle: loanTitle,
-                },
-              });
-            },
-          },
-          {
-            text: "Later",
-            style: "cancel",
-            onPress: () => router.back(),
-          },
-        ],
-      });
+      // No collateral prompt here: the loan has no on-chain identity until an admin
+      // approves it, so there is nothing to deposit against yet. Records shows the
+      // application as Awaiting Review and offers the deposit once it is approved.
+      toast.success("Loan applied — awaiting review");
+      router.replace("/(tabs)/Records");
     } catch (error) {
       console.error("[LoanApplication] Apply error:", error);
       setAlert({
@@ -328,7 +311,7 @@ export default function LoanApplication() {
             </Text>
 
             <Text className="text-xl font-bold text-gray-900">
-              {loanAmount}
+              {loanAmount.toFixed(6)} ETH
             </Text>
           </View>
         </View>
@@ -404,12 +387,17 @@ export default function LoanApplication() {
           </View>
         </View>
 
-        {/* Monthly Repayment */}
+        {/* Amount due */}
         <View className="mx-5 mt-8 items-center">
-          <Text className="text-sm text-gray-500 mb-1">Monthly Repayment:</Text>
+          <Text className="text-sm text-gray-500 mb-1">Total due in {durationDays} days:</Text>
           <Text className="text-2xl font-bold text-gray-900">
-            {formattedMonthlyRepayment}
+            {formattedTotalDue}
           </Text>
+          {loanWallet && (
+            <Text className="text-xs text-gray-400 mt-2 text-center">
+              Uses wallet {loanWallet.slice(0, 8)}…{loanWallet.slice(-6)}. Deposit and repay from this wallet.
+            </Text>
+          )}
         </View>
       </ScrollView>
 

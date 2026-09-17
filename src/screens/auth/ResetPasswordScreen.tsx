@@ -274,7 +274,7 @@ export default function ResetPasswordScreen() {
                                             </Text>
                                         ) : (
                                             <Text className="text-gray-500 text-xs ml-4 mt-1">
-                                                Start with one uppercase, min 8 chars, lowercase, number, special char
+                                                Minimum 8 characters with uppercase, lowercase, number, and special character
                                             </Text>
                                         )}
                                     </View>

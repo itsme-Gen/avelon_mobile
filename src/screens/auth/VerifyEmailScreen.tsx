@@ -15,13 +15,37 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { verifyEmail } from "@/services/auth.service";
+import { useEffect, useState } from "react";
+import { resendVerification, verifyEmail } from "@/services/auth.service";
+
+const RESEND_COOLDOWN_S = 60;
 
 export default function VerifyEmailScreen() {
     const { email } = useLocalSearchParams<{ email: string }>();
     const [otp, setOtp] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isResending, setIsResending] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
+
+    useEffect(() => {
+        if (cooldown <= 0) return;
+        const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [cooldown]);
+
+    const handleResend = async () => {
+        if (!email || cooldown > 0) return;
+        setIsResending(true);
+        try {
+            const result = await resendVerification(email);
+            setCooldown(RESEND_COOLDOWN_S);
+            Alert.alert("Code Sent", result.message || "Check your inbox for a new code.");
+        } catch (error: any) {
+            Alert.alert("Could Not Send", error.message || "Please try again in a few minutes.");
+        } finally {
+            setIsResending(false);
+        }
+    };
 
     const handleVerifyOTP = async () => {
         if (!otp || otp.length < 6) {
@@ -100,6 +124,19 @@ export default function VerifyEmailScreen() {
                                             editable={!isLoading}
                                         />
                                     </View>
+                                    <TouchableOpacity
+                                        onPress={handleResend}
+                                        disabled={isResending || cooldown > 0 || !email}
+                                        className="mt-4 items-center"
+                                    >
+                                        {isResending ? (
+                                            <ActivityIndicator color="black" />
+                                        ) : (
+                                            <Text className={`font-semibold ${cooldown > 0 ? "text-gray-400" : "text-black underline"}`}>
+                                                {cooldown > 0 ? `Send a new code in ${cooldown}s` : "Didn't get a code? Send a new one"}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         </TouchableWithoutFeedback>

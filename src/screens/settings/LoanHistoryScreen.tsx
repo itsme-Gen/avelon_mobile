@@ -17,6 +17,8 @@ interface LoanHistoryScreenProps {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+    PENDING_APPROVAL: { bg: "bg-amber-100", text: "text-amber-700", label: "Awaiting Review" },
+    REJECTED: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
     PENDING_COLLATERAL: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Pending Collateral" },
     COLLATERAL_DEPOSITED: { bg: "bg-blue-100", text: "text-blue-700", label: "Collateral Deposited" },
     ACTIVE: { bg: "bg-green-100", text: "text-green-700", label: "Active" },

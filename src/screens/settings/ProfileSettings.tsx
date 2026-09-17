@@ -46,7 +46,7 @@ function SettingsItem({
 
 export default function ProfileSettings({ onResetVerification, onOpenNotifications, onOpenLoanHistory, onOpenChangePassword, onOpenEditProfile, onOpenSupport, onOpenFAQs, onOpenLegal }: ProfileSettingsProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [biometricsEnabled] = useState(false);
 
   const handleLogoutConfirm = async () => {
     try {
