@@ -38,7 +38,7 @@ const slides = [
     title: "AI-Powered Risk",
     subtitle: "Intelligence",
     description:
-      "AI analyze Ethereum volatility and borrower data to ensure smarter, safer lending decisions.",
+      "AI checks your ID, scores your application and forecasts ETH price swings to help you plan.",
   },
   {
     id: "4",
@@ -46,7 +46,7 @@ const slides = [
     image: require("../../../assets/images/blockchain.png"),
     title: "Trust Enforced by Blockchain",
     description:
-      "AI models analyze Ethereum volatility and borrower data to ensure smarter, safer lending decisions.",
+      "Smart contracts hold your stake and record every payment, so loan terms can't change after you sign.",
   },
 ];
 

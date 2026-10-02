@@ -1,8 +1,9 @@
 import { CustomAlert } from "@/components/alertbutton/CustomAlert";
 import { useWalletConnect } from "@/hooks/useWalletConnect";
 import { appChain } from "@/config/chain";
-import type { PriceData, PriceHistoryPoint } from "@/services/market.service";
+import type { PriceData, PriceHistoryPoint, VolatilityForecast } from "@/services/market.service";
 import * as marketService from "@/services/market.service";
+import { formatMove, priceRange, riskStyle, samplePoints } from "@/utils/market";
 import type { WalletBalance, WalletInfo } from "@/services/wallet.service";
 import * as walletService from "@/services/wallet.service";
 import { useVerificationStore } from "@/stores/verification.store";
@@ -29,7 +30,8 @@ const screenWidth = Dimensions.get("window").width;
 const scrollHPadding = 20;
 const analyticsCardPadding = 14;
 const chartSideMargin = 12;
-const chartPaddingRight = 24;
+// chart-kit reads its y-label width from style.paddingRight; 24 clipped six-digit prices
+const chartPaddingRight = 52;
 const chartWidth =
   screenWidth -
   scrollHPadding * 2 -
@@ -59,6 +61,7 @@ export default function WalletScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
+  const [forecast, setForecast] = useState<VolatilityForecast | null>(null);
 
   const [alert, setAlert] = useState<{
     visible: boolean;
@@ -98,6 +101,10 @@ export default function WalletScreen() {
   }, []);
 
   const fetchMarketData = useCallback(async () => {
+    // Loaded on its own so a slow AI service never holds up the price chart
+    marketService.getVolatility(7).then((res) => {
+      if (res.success && res.data) setForecast(res.data);
+    });
     try {
       const [priceRes, historyRes] = await Promise.all([
         marketService.getPrice(),
@@ -275,11 +282,8 @@ export default function WalletScreen() {
         ],
       };
     }
-    const sampled = priceHistory
-      .filter(
-        (_, i) => i % Math.max(1, Math.floor(priceHistory.length / 6)) === 0,
-      )
-      .slice(0, 6);
+    // Six points across the day, ending on the newest hour
+    const sampled = samplePoints(priceHistory, 6);
     return {
       labels: sampled.map((p) => {
         const d = new Date(p.createdAt);
@@ -294,6 +298,14 @@ export default function WalletScreen() {
       ],
     };
   })();
+
+  const forecastReady = !!forecast?.online && typeof forecast.horizonVolatility === "number";
+  const risk = riskStyle(forecast?.riskLevel);
+  const range =
+    forecastReady && priceData
+      ? priceRange(priceData.ethPricePHP, forecast!.horizonVolatility!)
+      : null;
+  const peso = (value: number) => Math.round(value).toLocaleString();
 
   const chartConfig = {
     backgroundGradientFrom: "#ffffff",
@@ -687,21 +699,50 @@ export default function WalletScreen() {
                   <Text className="text-[15px] font-semibold text-[#111827]">
                     ETH Price Volatility
                   </Text>
-                  <View
-                    style={{
-                      backgroundColor: "rgba(248,140,60,0.12)",
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: "rgba(248,140,60,0.24)",
-                    }}
-                  >
-                    <Text className="text-[11px] font-semibold text-[#f58a2e] uppercase">
-                      Predictor
-                    </Text>
-                  </View>
+                  {/* Names the model that actually answered; hidden when the AI service is down */}
+                  {forecastReady && (
+                    <View
+                      style={{
+                        backgroundColor: "rgba(248,140,60,0.12)",
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: "rgba(248,140,60,0.24)",
+                      }}
+                    >
+                      <Text className="text-[11px] font-semibold text-[#f58a2e] uppercase">
+                        {forecast!.model === "lstm" ? "LSTM forecast" : "Estimate"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
+
+                {forecastReady && (
+                  <View className="mb-2">
+                    <View className="flex-row items-center">
+                      <View className={`px-2.5 py-1 rounded-full ${risk.bg}`}>
+                        <Text className={`text-xs font-medium ${risk.text}`}>
+                          {risk.label}
+                        </Text>
+                      </View>
+                      <Text className="text-[#374151] text-[12px] ml-2">
+                        About {formatMove(forecast!.horizonVolatility!)} over the next{" "}
+                        {forecast!.horizonDays} days
+                      </Text>
+                    </View>
+                    {range && (
+                      <Text className="text-[#6b7280] text-[11px] mt-1.5">
+                        Likely range: ₱{peso(range.lower)} – ₱{peso(range.upper)}
+                      </Text>
+                    )}
+                    {forecast!.priceSource === "snapshot" && (
+                      <Text className="text-[#9ca3af] text-[11px] mt-1">
+                        Forecast from saved prices; live market data is unavailable.
+                      </Text>
+                    )}
+                  </View>
+                )}
 
                 <View className="items-center">
                   <LineChart
@@ -723,6 +764,7 @@ export default function WalletScreen() {
                     withDots={true}
                     withShadow={true}
                     segments={4}
+                    formatYLabel={(value) => `${(Number(value) / 1000).toFixed(1)}k`}
                   />
                 </View>
 
@@ -738,10 +780,16 @@ export default function WalletScreen() {
                   />
                   <Text className="text-[#6b7280] text-[11px] font-medium">
                     {priceData
-                      ? `Current: ₱${priceData.ethPricePHP.toLocaleString()}`
+                      ? `Last 24h · Current: ₱${priceData.ethPricePHP.toLocaleString()}`
                       : "Loading..."}
                   </Text>
                 </View>
+
+                {forecastReady && (
+                  <Text className="text-[#9ca3af] text-[10px] text-center mt-2">
+                    Advisory only. Price moves never liquidate a loan; only a missed due date does.
+                  </Text>
+                )}
               </View>
             </>
           )}
