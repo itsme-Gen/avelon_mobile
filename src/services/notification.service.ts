@@ -9,6 +9,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { API_BASE_URL } from '@/config';
+import { easProjectId } from '@/utils/eas-project-id';
 import { getAccessToken } from '@/utils/storage';
 import { authenticatedFetch } from './authenticated-fetch';
 
@@ -90,10 +91,9 @@ export async function getFCMToken(): Promise<string | null> {
         return null;
     }
 
-    // getExpoPushTokenAsync works in both Expo Go and custom builds
-    const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    const projectId = easProjectId();
     if (!projectId) {
-        console.warn('[Notifications] EXPO_PUBLIC_EAS_PROJECT_ID is not configured.');
+        console.warn('[Notifications] No EAS project ID in app.json or EXPO_PUBLIC_EAS_PROJECT_ID.');
         return null;
     }
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
