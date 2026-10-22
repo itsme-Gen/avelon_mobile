@@ -3,6 +3,7 @@
  * Handles ETH price and price history retrieval.
  */
 import { API_BASE_URL } from '@/config';
+import { authenticatedFetch } from './authenticated-fetch';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -19,6 +20,21 @@ export interface PriceHistoryPoint {
     ethPricePHP: number;
     source: string;
     createdAt: string;
+}
+
+// The advisory LSTM forecast. online is false when the AI service is down, and
+// then none of the forecast fields are present.
+export interface VolatilityForecast {
+    online: boolean;
+    horizonDays: number;
+    advisoryOnly: boolean;
+    model?: 'lstm' | 'ewma_fallback';
+    priceSource?: 'coingecko' | 'snapshot';
+    riskLevel?: string;
+    predictedVolatility?: number;
+    // Over the whole horizon, not annualised, as a fraction
+    horizonVolatility?: number;
+    currentPricePHP?: number;
 }
 
 function getNetworkErrorMessage(error: unknown): string {
@@ -78,6 +94,32 @@ export async function getPriceHistory(
         return { success: true, data: result.data?.history };
     } catch (error) {
         console.error('[Market] Price history error:', error);
+        return { success: false, error: getNetworkErrorMessage(error) };
+    }
+}
+
+/**
+ * Get the advisory ETH volatility forecast. Signed-in only, so it goes through
+ * authenticatedFetch; a failure just leaves the card without a forecast.
+ */
+export async function getVolatility(
+    horizonDays = 7,
+): Promise<{ success: boolean; data?: VolatilityForecast; error?: string }> {
+    try {
+        const response = await authenticatedFetch(`${API_BASE_URL}/market/volatility?horizon=${horizonDays}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to fetch the forecast' };
+        }
+
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Market] Volatility error:', error);
         return { success: false, error: getNetworkErrorMessage(error) };
     }
 }
