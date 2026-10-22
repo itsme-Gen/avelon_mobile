@@ -50,7 +50,7 @@ export default function RootLayout() {
     Syne_800ExtraBold,
   });
   // Structural type so this file never imports expo-notifications, which throws
-  // on load in Expo Go.
+  // on load in Expo Go on Android.
   const notificationListener = useRef<{ remove: () => void } | null>(null);
   const responseListener = useRef<{ remove: () => void } | null>(null);
 
@@ -120,7 +120,7 @@ export default function RootLayout() {
     // Set up Android notification channel
     setupAndroidChannel();
 
-    // null in Expo Go, where push notifications are unavailable
+    // null in Expo Go on Android, where push notifications are unavailable
     const Notifications = getNotifications();
     if (!Notifications) return;
 
