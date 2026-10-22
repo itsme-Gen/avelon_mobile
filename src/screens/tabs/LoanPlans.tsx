@@ -24,8 +24,6 @@ type InfoModalState = {
   message?: string;
   icon?: keyof typeof Ionicons.glyphMap;
   iconColor?: string;
-  actionLabel?: string;
-  onAction?: () => void;
 };
 
 const InfoModal = ({
@@ -66,20 +64,6 @@ const InfoModal = ({
           ) : null}
         </View>
 
-        {state.onAction && state.actionLabel ? (
-          <TouchableOpacity
-            onPress={() => {
-              state.onAction?.();
-              onClose();
-            }}
-            className="bg-black w-full py-4 rounded-full items-center"
-          >
-            <Text className="text-white font-semibold text-base">
-              {state.actionLabel}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-
         <TouchableOpacity
           onPress={onClose}
           className="w-full py-4 rounded-full items-center mt-2 border border-gray-200"
@@ -110,6 +94,7 @@ export default function LoanPlans() {
   const [plans, setPlans] = useState<LoanPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [selectedDurationByPlan, setSelectedDurationByPlan] = useState<
     Record<string, number | null>
   >({});
@@ -206,9 +191,13 @@ export default function LoanPlans() {
       const result = await loanService.getLoanPlans();
       if (result.success && result.data) {
         setPlans(result.data);
+        setLoadFailed(false);
+      } else {
+        setLoadFailed(true);
       }
     } catch (error) {
       console.error("[LoanPlans] Fetch error:", error);
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -285,18 +274,8 @@ export default function LoanPlans() {
     // without the field ever losing focus
     const chosenAmount = effectiveAmount(plan);
 
-    if (!isVerified) {
-      setInfoModal({
-        visible: true,
-        title: "Account verification required",
-        message: "Please verify your account first to apply for a loan.",
-        icon: "shield-checkmark",
-        iconColor: "#0f172a",
-        actionLabel: "Verify now",
-        onAction: () => setShowVerification(true),
-      });
-      return;
-    }
+    // Plans only render once verified, so this is a guard, not a path a user reaches
+    if (!isVerified) return;
 
     if (!chosenDuration) {
       setInfoModal({
@@ -685,7 +664,9 @@ export default function LoanPlans() {
             ) : (
               <View className="bg-gray-50 border border-gray-200 rounded-2xl p-6 items-center">
                 <Text className="text-sm text-gray-500 text-center">
-                  No loan plans available at the moment.
+                  {loadFailed
+                    ? "Couldn't load the loan plans. Check your connection and try again."
+                    : "No loan plans available at the moment."}
                 </Text>
                 <TouchableOpacity onPress={() => fetchPlans()} className="mt-3">
                   <Text className="text-sm text-[#FF8C42] font-medium">

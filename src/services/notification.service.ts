@@ -2,7 +2,7 @@
  * Notification Service
  *
  * Handles FCM device token registration for push notifications.
- * Requires a development build. In Expo Go every function here is a no-op.
+ * Works in development builds and in Expo Go on iOS. In Expo Go on Android every function here is a no-op.
  */
 import type * as NotificationsModule from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -17,17 +17,18 @@ type Notifications = typeof NotificationsModule;
 
 // Expo Go dropped Android push support in SDK 53 and throws the moment
 // expo-notifications is imported. auth.store imports this file and the tab layout
-// imports auth.store, so that throw blanked every screen. Load it lazily instead:
-// a development build still gets pushes, Expo Go just goes without them.
-const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+// imports auth.store, so that throw blanked every screen. Load it lazily instead.
+// Expo Go on iOS still delivers pushes (it only warns), so only Android goes without.
+const PUSH_UNAVAILABLE_IN_EXPO_GO =
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient && Platform.OS === 'android';
 
 let cachedModule: Notifications | null | undefined;
 
 /** The native module, or null wherever it cannot be loaded. */
 export function getNotifications(): Notifications | null {
     if (cachedModule !== undefined) return cachedModule;
-    if (IN_EXPO_GO) {
-        console.log('[Notifications] Running in Expo Go — push notifications are disabled.');
+    if (PUSH_UNAVAILABLE_IN_EXPO_GO) {
+        console.log('[Notifications] Running in Expo Go on Android — push notifications are disabled.');
         cachedModule = null;
         return null;
     }
