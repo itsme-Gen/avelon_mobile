@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     Keyboard,
     KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import {
     TouchableWithoutFeedback,
     View,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
     getPasswordStrength,
@@ -345,7 +345,7 @@ export default function SignUpScreen() {
                         textContentType="password"
                         autoComplete="password"
                       />
-                      {confirmPassword &&
+                      {!!confirmPassword &&
                         password === confirmPassword &&
                         !errors.confirmPassword && (
                           <Ionicons

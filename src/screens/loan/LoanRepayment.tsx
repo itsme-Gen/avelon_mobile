@@ -15,6 +15,7 @@ import { useWalletConnect } from "@/hooks/useWalletConnect";
 import { useRecordedTransaction } from "@/hooks/useRecordedTransaction";
 import { getWalletErrorMessage } from "@/utils/wallet-errors";
 import { amountOwed, formatEth } from "@/utils/loan-amounts";
+import { parseEther } from "viem";
 import * as loanService from "@/services/loan.service";
 
 const TX_HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
@@ -69,7 +70,27 @@ export default function LoanRepaymentScreen() {
   }, [loadLoan]);
 
   const nothingOwed = owed === "0";
-  const canRepay = !!poolAddress && contractLoanId !== null && !!owed && !nothingOwed && loanStatus === "ACTIVE";
+
+  // Full balance closes the loan; a part payment lowers what is owed and the
+  // loan stays active until the rest arrives by the due date
+  const [payMode, setPayMode] = useState<"full" | "part">("full");
+  const [partAmount, setPartAmount] = useState("");
+  const partError = (() => {
+    if (payMode !== "part") return null;
+    const value = partAmount.trim();
+    if (!value) return "Enter how much to pay now.";
+    if (!AMOUNT_REGEX.test(value) || Number(value) <= 0) return "Enter an amount like 0.05, with at most 18 decimals.";
+    try {
+      if (owed && parseEther(value) > parseEther(owed)) return `That is more than the ${formatEth(owed)} you owe.`;
+    } catch {
+      return "Enter a valid amount.";
+    }
+    return null;
+  })();
+  const payAmount = payMode === "full" ? owed : partAmount.trim();
+
+  const canRepay =
+    !!poolAddress && contractLoanId !== null && !!owed && !nothingOwed && loanStatus === "ACTIVE" && !partError;
   const { isConnected, repayLoan: walletRepayLoan } = useWalletConnect();
 
   const submit = useCallback(
@@ -96,13 +117,13 @@ export default function LoanRepaymentScreen() {
       const isFullyRepaid = result.data?.isFullyRepaid ?? false;
       setAlert({
         visible: true,
-        title: isFullyRepaid ? "Loan Fully Repaid! 🎉" : "Repayment Recorded",
+        title: isFullyRepaid ? "Loan Fully Repaid" : "Repayment Recorded",
         message: result.alreadyRecorded
           ? "This payment was already recorded."
           : isFullyRepaid
             ? result.data?.collateralReleasePending
               ? "Your loan is fully repaid. Your stake is being returned and will arrive shortly."
-              : "Congratulations! Your loan has been fully repaid and your stake returned."
+              : "Your loan is fully repaid and your stake has been returned to your wallet."
             : `Repayment of ${amount ?? ""} ETH recorded. Remaining: ${formatEth(result.data?.remainingOwed ?? "0")}.`,
         icon: "checkmark-circle",
         iconColor: "#10B981",
@@ -123,7 +144,7 @@ export default function LoanRepaymentScreen() {
 
   const handleWalletRepay = async () => {
     if (!canRepay) return;
-    const amount = owed;
+    const amount = payAmount;
 
     setIsSigning(true);
     let txHash: string;
@@ -218,9 +239,12 @@ export default function LoanRepaymentScreen() {
             Remaining Balance
           </Text>
           <Text className="text-white text-[28px] font-extrabold leading-tight mb-1">
-            {owed ? `${owed} ETH` : "…"}
+            {owed ? formatEth(owed) : "…"}
           </Text>
-          <Text className="text-gray-500 text-[11px] mb-3">This exact amount is sent, so the loan closes in one payment.</Text>
+          {!!owed && !nothingOwed && (
+            <Text className="text-gray-400 text-[11px] mb-1" selectable>Exactly {owed} ETH</Text>
+          )}
+          <Text className="text-gray-500 text-[11px] mb-3">Pay it all to close the loan and get your stake back, or pay part of it now.</Text>
           <View className="flex-row items-center">
             <Ionicons name="send-outline" size={14} color="#6B7280" />
             <Text className="text-gray-500 text-xs ml-1" numberOfLines={1}>
@@ -261,6 +285,46 @@ export default function LoanRepaymentScreen() {
           </View>
         )}
 
+        {/* How much to pay */}
+        {!nothingOwed && !pending && !showManual && (
+          <View className="mb-4">
+            <View className="flex-row bg-gray-100 rounded-xl p-1">
+              {(["full", "part"] as const).map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={() => setPayMode(mode)}
+                  className={`flex-1 py-2.5 rounded-lg items-center ${payMode === mode ? "bg-white" : ""}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: payMode === mode }}
+                >
+                  <Text className={`text-sm font-semibold ${payMode === mode ? "text-gray-900" : "text-gray-500"}`}>
+                    {mode === "full" ? "Full balance" : "Part payment"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {payMode === "part" && (
+              <View className="mt-3">
+                <Text className="text-xs font-semibold text-gray-600 mb-1">Amount to pay now (ETH)</Text>
+                <TextInput
+                  className={`bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 border ${partError && partAmount ? "border-red-300" : "border-gray-200"}`}
+                  placeholder="e.g. 0.05"
+                  placeholderTextColor="#9CA3AF"
+                  value={partAmount}
+                  onChangeText={(t) => setPartAmount(t.replace(/[^0-9.]/g, ""))}
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  autoCorrect={false}
+                  accessibilityLabel="Amount to pay now in ETH"
+                />
+                <Text className={`text-[11px] mt-1 ${partError && partAmount ? "text-red-500" : "text-gray-500"}`}>
+                  {partError && partAmount ? partError : "The rest is still due by the due date. Your stake comes back once it is all paid."}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Repayment instructions */}
         <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-100">
           <Text className="text-[13px] text-blue-800 font-semibold mb-1">How to repay</Text>
@@ -289,7 +353,7 @@ export default function LoanRepaymentScreen() {
               <View className="flex-row items-center">
                 <Ionicons name="arrow-up-circle-outline" size={20} color="#fff" />
                 <Text className="text-white font-semibold text-base ml-2">
-                  Repay {owed ? formatEth(owed) : ""} via Wallet
+                  Repay {payAmount && !partError ? formatEth(payAmount) : ""} via Wallet
                 </Text>
               </View>
             )}
@@ -308,7 +372,11 @@ export default function LoanRepaymentScreen() {
         {/* Toggle to manual */}
         {!showManual && !pending && (
           <TouchableOpacity
-            onPress={() => setShowManual(true)}
+            onPress={() => {
+              // Carry over a part amount already typed above
+              if (payMode === "part" && !partError) setManualAmount(payAmount);
+              setShowManual(true);
+            }}
             className="items-center py-2"
           >
             <Text className="text-gray-500 text-xs underline">

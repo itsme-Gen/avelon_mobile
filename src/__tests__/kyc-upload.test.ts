@@ -1,3 +1,7 @@
+import { manipulateAsync } from 'expo-image-manipulator';
+import { authenticatedFetch } from '@/services/authenticated-fetch';
+import { uploadDocument } from '@/services/kyc.service';
+// jest.mock calls are hoisted above these imports by babel-jest
 jest.mock('expo-file-system', () => ({
   File: jest.fn().mockImplementation((uri: string) => ({
     name: uri.split('/').pop(),
@@ -10,10 +14,6 @@ jest.mock('expo-image-manipulator', () => ({
 }));
 jest.mock('@/services/authenticated-fetch', () => ({ authenticatedFetch: jest.fn() }));
 jest.mock('@/utils/storage', () => ({ getAccessToken: jest.fn().mockResolvedValue('token') }));
-
-import { manipulateAsync } from 'expo-image-manipulator';
-import { authenticatedFetch } from '@/services/authenticated-fetch';
-import { uploadDocument } from '@/services/kyc.service';
 
 const fetchMock = authenticatedFetch as jest.Mock;
 

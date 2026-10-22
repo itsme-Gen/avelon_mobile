@@ -10,31 +10,35 @@ interface FAQsScreenProps {
 const FAQS = [
   {
     question: "What is Avelon?",
-    answer: "Avelon is a blockchain-based micro-lending platform that allows users to borrow and lend using cryptocurrency as collateral.",
+    answer: "Avelon lends ETH from a pool that investors fund. You lock a stake in ETH, receive the loan in your wallet, and get the stake back when you repay.",
   },
   {
     question: "How do I apply for a loan?",
-    answer: "After verifying your identity (KYC), connect your wallet, then browse available loan plans and submit an application with your desired amount and duration.",
+    answer: "Verify your identity, connect your wallet, then pick a plan, an amount and a term on Loan Plans. An administrator reviews every application and you are notified of the decision.",
   },
   {
-    question: "What is collateral?",
-    answer: "Collateral is the cryptocurrency (ETH) you deposit as security for your loan. The required collateral amount depends on your loan plan's collateral ratio.",
+    question: "What is the stake?",
+    answer: "The stake is ETH you lock when your loan is approved, between 35% and 60% of the loan depending on the plan. It is returned in full once the loan is repaid.",
   },
   {
     question: "How do I repay my loan?",
-    answer: "You can repay your loan by sending the repayment amount in ETH to the designated contract address. Partial repayments are accepted.",
+    answer: "Open the loan under Records and tap Make Repayment. Pay the full balance, or part of it now and the rest by the due date. Always pay through the app so the payment is matched to your loan.",
   },
   {
-    question: "What happens if I miss a payment?",
-    answer: "Late payments may incur penalty fees as specified in your loan plan. In this build, liquidation is limited to overdue default after the configured grace period; ETH volatility is advisory only.",
+    question: "What happens if I miss the due date?",
+    answer: "You get a reminder before the due date and a notice once it passes. If it stays unpaid, the stake can be seized. There are no late fees.",
   },
   {
-    question: "How does KYC verification work?",
-    answer: "KYC requires a government ID and selfie. Automated checks assist the review, but uncertain or unavailable AI results stay pending for manual administrator review.",
+    question: "Can a drop in the ETH price take my stake?",
+    answer: "No. Your loan and your stake are both in ETH, so the price does not change what you owe in ETH. Big price moves send you a warning, but only a missed due date can cost the stake.",
   },
   {
-    question: "Is my data secure?",
-    answer: "This is a capstone prototype, not a certified production KYC system. Use synthetic demonstration data only; production document storage remains disabled until a secure object-storage adapter is implemented.",
+    question: "How does identity verification work?",
+    answer: "You upload a government ID and take a selfie. Automated checks read the ID and compare the photos, and an administrator can review the result.",
+  },
+  {
+    question: "Is this real money?",
+    answer: "No. Avelon is a capstone prototype running on a test network with test ETH. Use demonstration data only.",
   },
 ];
 
@@ -46,6 +50,8 @@ export default function FAQsScreen({ onBack }: FAQsScreenProps) {
       <View className="flex-row items-center px-5 py-4 bg-white border-b border-gray-100">
         <TouchableOpacity
           onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
         >
           <Ionicons name="arrow-back" size={20} color="#000" />

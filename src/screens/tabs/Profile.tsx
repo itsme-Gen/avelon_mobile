@@ -13,6 +13,8 @@ import LoanHistoryScreen from "../../screens/settings/LoanHistoryScreen";
 import NotificationsScreen from "../../screens/settings/NotificationsScreen";
 import ProfileSettings from "../../screens/settings/ProfileSettings";
 import SupportScreen from "../../screens/settings/SupportScreen";
+import NotificationSettingsScreen from "../../screens/settings/NotificationSettingsScreen";
+import { useReplayTour, useTourTarget } from "@/components/tour";
 
 export default function Profile() {
   const [showVerification, setShowVerification] = useState(false);
@@ -23,6 +25,9 @@ export default function Profile() {
   const [showSupport, setShowSupport] = useState(false);
   const [showFAQs, setShowFAQs] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const replayTour = useReplayTour();
+  const profileRef = useTourTarget("profile-settings");
   const { isVerified } = useVerificationStore();
   const { user } = useAuthStore();
   const router = useRouter();
@@ -72,6 +77,10 @@ export default function Profile() {
 
   if (showLegal) {
     return <LegalScreen onBack={() => setShowLegal(false)} />;
+  }
+
+  if (showNotificationSettings) {
+    return <NotificationSettingsScreen onBack={() => setShowNotificationSettings(false)} />;
   }
 
   if (showVerification) {
@@ -149,9 +158,10 @@ export default function Profile() {
       {/* Profile Screen */}
       <View className="flex-1">
         {/* Profile Info */}
+        <View ref={profileRef} collapsable={false} className="mx-4 mt-2 mb-6">
         <TouchableOpacity
           onPress={() => setShowEditProfile(true)}
-          className="flex-row items-center justify-between px-6 py-3 bg-white mx-4 mt-2 rounded-2xl mb-6"
+          className="flex-row items-center justify-between px-6 py-3 bg-white rounded-2xl"
         >
           <View className="flex-row items-center gap-3">
             <View className="w-12 h-12 rounded-full bg-gray-200 items-center justify-center">
@@ -166,6 +176,7 @@ export default function Profile() {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
+        </View>
 
         {renderVerifyBanner}
 
@@ -178,28 +189,9 @@ export default function Profile() {
           onOpenSupport={() => setShowSupport(true)}
           onOpenFAQs={() => setShowFAQs(true)}
           onOpenLegal={() => setShowLegal(true)}
+          onOpenNotificationSettings={() => setShowNotificationSettings(true)}
+          onReplayTutorial={replayTour}
         />
-
-        {/* Bottom Navigation */}
-        <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-white py-4 px-6">
-          <TouchableOpacity className="items-center">
-            <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center">
-            <Ionicons name="wallet-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center">
-            <Ionicons name="document-text-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center">
-            <Ionicons name="newspaper-outline" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity className="items-center">
-            <View className="w-10 h-10 bg-orange-400 rounded-full items-center justify-center">
-              <Ionicons name="person" size={20} color="#fff" />
-            </View>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );

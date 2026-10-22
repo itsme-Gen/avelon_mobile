@@ -121,3 +121,52 @@ export async function markAllAsRead(): Promise<{ success: boolean; error?: strin
         return { success: false, error: 'Network error. Please try again.' };
     }
 }
+
+// ─── Preferences ────────────────────────────────────────────
+
+export interface NotificationPreferences {
+    emailLoanUpdates: boolean;
+    emailRepaymentReminders: boolean;
+    emailLiquidationAlerts: boolean;
+    emailMarketingNews: boolean;
+    pushLoanUpdates: boolean;
+    pushRepaymentReminders: boolean;
+    pushLiquidationAlerts: boolean;
+}
+
+export async function getPreferences(): Promise<{ success: boolean; data?: NotificationPreferences; error?: string }> {
+    try {
+        const response = await authenticatedFetch(`${API_BASE_URL}/notifications/preferences`, {
+            method: 'GET',
+            headers: await authJsonHeaders(),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to load notification settings' };
+        }
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Notifications] Preferences error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}
+
+export async function updatePreferences(
+    changes: Partial<NotificationPreferences>,
+): Promise<{ success: boolean; data?: NotificationPreferences; error?: string }> {
+    try {
+        const response = await authenticatedFetch(`${API_BASE_URL}/notifications/preferences`, {
+            method: 'PUT',
+            headers: await authJsonHeaders(),
+            body: JSON.stringify(changes),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            return { success: false, error: result.error?.message || 'Failed to save notification settings' };
+        }
+        return { success: true, data: result.data };
+    } catch (error) {
+        console.error('[Notifications] Save preferences error:', error);
+        return { success: false, error: 'Network error. Please try again.' };
+    }
+}

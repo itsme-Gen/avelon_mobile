@@ -12,6 +12,7 @@ import { needsVerification } from "@/utils/wallet-link";
 import * as loanService from "@/services/loan.service";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppKit } from "@/hooks/useAppKit";
+import { useTourTarget } from "@/components/tour";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -43,6 +44,7 @@ export default function WalletScreen() {
   const [isConnecting, setIsConnecting] = useState(false);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
+  const walletCardRef = useTourTarget("wallet-card");
 
   // WalletConnect hooks
   const {
@@ -445,6 +447,8 @@ export default function WalletScreen() {
           ) : wallets.length === 0 ? (
             /* No Wallet State */
             <View
+              ref={walletCardRef}
+              collapsable={false}
               style={{
                 backgroundColor: "#f8893c",
                 borderRadius: 28,
@@ -494,6 +498,8 @@ export default function WalletScreen() {
             <>
               {/* Balance Card */}
               <View
+                ref={walletCardRef}
+                collapsable={false}
                 style={{
                   backgroundColor: "#f8893c",
                   borderRadius: 28,

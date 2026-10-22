@@ -1,5 +1,6 @@
 import "@/polyfills/wallet-compat";
 import { ToastProvider } from "@/components/toast";
+import { TourProvider } from "@/components/tour";
 import { WalletProvider } from "@/providers/WalletProvider";
 import { getNotifications, setupAndroidChannel } from "@/services/notification.service";
 import {
@@ -11,11 +12,11 @@ import {
 } from "@expo-google-fonts/syne";
 import { useFonts } from "expo-font";
 import { Stack, router } from "expo-router";
-import type { Href } from "expo-router";
 import * as NativeSplashScreen from "expo-splash-screen";
 import { cloneElement, useEffect, useRef } from "react";
 import { LogBox, StyleSheet, Text, TextInput } from "react-native";
 import { useAuthStore } from "@/stores/auth.store";
+import { notificationRoute } from "@/utils/notification-route";
 import "../styles/global.css";
 
 const syneFontMap: Record<string, string> = {
@@ -31,8 +32,6 @@ const syneFontMap: Record<string, string> = {
   normal: "Syne_400Regular",
   bold: "Syne_700Bold",
 };
-
-const notificationsRoute = "/notifications" as Href;
 
 // Keep native splash visible until we manually hide it
 NativeSplashScreen.preventAutoHideAsync();
@@ -88,6 +87,9 @@ export default function RootLayout() {
 
       (component as any).render = function (...args: any[]) {
         const element = originalRender.apply(this, args);
+        // On web a nested Text renders a bare DOM span whose style is already a
+        // CSS object; an array there crashes React DOM. It inherits the font anyway.
+        if (typeof element?.type === "string") return element;
         const incomingStyle = element.props?.style;
         const flattened = StyleSheet.flatten(incomingStyle) || {};
         const weightKey = `${flattened.fontWeight ?? "400"}`;
@@ -134,14 +136,7 @@ export default function RootLayout() {
     // Listener: user taps on a notification
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data;
-        // Loan updates open the loan list, which shows the right next step for
-        // any status (deposit, repay, or just the result)
-        if (data?.loanId && typeof data.loanId === "string") {
-          router.push("/(tabs)/Records");
-          return;
-        }
-        router.push(notificationsRoute);
+        router.push(notificationRoute(response.notification.request.content.data));
       });
 
     return () => {
@@ -157,19 +152,21 @@ export default function RootLayout() {
   return (
     <WalletProvider>
       <ToastProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Protected guard={isAuthenticated}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="(verification)" />
-            <Stack.Screen name="(settings)" />
-            <Stack.Screen name="loan-application" />
-            <Stack.Screen name="collateral-deposit" />
-            <Stack.Screen name="loan-repayment" />
-            <Stack.Screen name="notifications" />
-          </Stack.Protected>
-        </Stack>
+        <TourProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Protected guard={isAuthenticated}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(verification)" />
+              <Stack.Screen name="(settings)/ProfileSettings" />
+              <Stack.Screen name="loan-application" />
+              <Stack.Screen name="collateral-deposit" />
+              <Stack.Screen name="loan-repayment" />
+              <Stack.Screen name="notifications" />
+            </Stack.Protected>
+          </Stack>
+        </TourProvider>
       </ToastProvider>
     </WalletProvider>
   );

@@ -1,3 +1,8 @@
+import * as authService from '@/services/auth.service';
+import * as storage from '@/utils/storage';
+import { endWalletSession } from '@/utils/wallet-session';
+import { useAuthStore } from '@/stores/auth.store';
+// jest.mock calls are hoisted above these imports by babel-jest
 jest.mock('@/services/auth.service', () => ({
   getSession: jest.fn(),
   refreshAccessToken: jest.fn(),
@@ -16,14 +21,12 @@ jest.mock('@/utils/storage', () => ({
   getRefreshToken: jest.fn(),
 }));
 jest.mock('@/utils/wallet-session', () => ({ endWalletSession: jest.fn().mockResolvedValue(undefined) }));
+const mockResetVerification = jest.fn();
 jest.mock('@/stores/verification.store', () => ({
-  useVerificationStore: { getState: () => ({ checkKycStatus: jest.fn().mockResolvedValue(undefined) }) },
+  useVerificationStore: {
+    getState: () => ({ checkKycStatus: jest.fn().mockResolvedValue(undefined), resetVerification: mockResetVerification }),
+  },
 }));
-
-import * as authService from '@/services/auth.service';
-import * as storage from '@/utils/storage';
-import { endWalletSession } from '@/utils/wallet-session';
-import { useAuthStore } from '@/stores/auth.store';
 
 const user = { id: 'u1', email: 'b@test.com', name: null, role: 'BORROWER', status: 'CONNECTED' };
 const signedOut = { success: true, data: { user: null, isAuthenticated: false } };
@@ -82,5 +85,10 @@ describe('logging out', () => {
     await useAuthStore.getState().logout();
     expect(endWalletSession).toHaveBeenCalled();
     expect(storage.clearAuthData).toHaveBeenCalled();
+  });
+
+  it("clears the KYC status so the next user's tour isn't picked from it", async () => {
+    await useAuthStore.getState().logout();
+    expect(mockResetVerification).toHaveBeenCalled();
   });
 });

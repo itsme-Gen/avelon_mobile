@@ -10,9 +10,9 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    Alert,
     ActivityIndicator,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState, useMemo } from "react";
@@ -306,7 +306,7 @@ export default function ResetPasswordScreen() {
                                                 textContentType="newPassword"
                                                 autoComplete="password-new"
                                             />
-                                            {confirmPassword &&
+                                            {!!confirmPassword &&
                                                 password === confirmPassword &&
                                                 !errors.confirmPassword && (
                                                     <Ionicons

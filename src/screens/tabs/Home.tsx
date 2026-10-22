@@ -23,6 +23,7 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { CustomAlert } from "../../components/alertbutton/CustomAlert";
+import { useTourTarget } from "@/components/tour";
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get("window").width;
@@ -52,6 +53,9 @@ export default function HomeScreen() {
     buttons: [],
   });
   const router = useRouter();
+  const overviewRef = useTourTarget("home-overview");
+  const applyRef = useTourTarget("home-apply");
+  const verifyRef = useTourTarget("home-verify");
 
   const [loanPlans, setLoanPlans] = useState<LoanPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
@@ -221,7 +225,7 @@ export default function HomeScreen() {
 
     if (kycStatus === "PENDING_KYC") {
       return (
-        <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex-row items-center">
+        <View ref={verifyRef} collapsable={false} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex-row items-center">
           <ActivityIndicator
             size="small"
             color="#D97706"
@@ -241,7 +245,7 @@ export default function HomeScreen() {
 
     if (kycStatus === "REJECTED") {
       return (
-        <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
+        <View ref={verifyRef} collapsable={false} className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
           <View className="flex-1 mr-3">
             <Text className="text-base font-semibold text-red-900">
               Verification rejected
@@ -262,7 +266,7 @@ export default function HomeScreen() {
     }
 
     return (
-      <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
+      <View ref={verifyRef} collapsable={false} className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 flex-row items-center justify-between">
         <View className="flex-1 mr-3">
           <Text className="text-base font-semibold text-gray-900">
             Verify your account
@@ -382,12 +386,13 @@ export default function HomeScreen() {
         <View className="px-5">
           {renderVerifyBanner}
 
+          <View ref={overviewRef} collapsable={false} className="mb-6">
           <Text className="text-xl font-semibold text-gray-900 mb-4">
             Borrow crypto, instantly!
           </Text>
 
           {/* Balance Cards */}
-          <View className="flex-row justify-between gap-3 mb-6">
+          <View className="flex-row justify-between gap-3">
             {/* Current Balance Card */}
             <View className="flex-1 bg-gray-50 rounded-2xl p-4">
               <View className="flex-row items-center mb-2">
@@ -403,6 +408,7 @@ export default function HomeScreen() {
             </View>
 
             {/* Loan Application Card */}
+            <View ref={applyRef} collapsable={false} className="flex-1">
             <TouchableOpacity
               className="flex-1 bg-[#FF8C42] rounded-2xl p-4"
               onPress={handleApplyLoan}
@@ -417,6 +423,8 @@ export default function HomeScreen() {
                 Apply for a Loan
               </Text>
             </TouchableOpacity>
+            </View>
+          </View>
           </View>
 
           {/* Chart Section */}
@@ -456,7 +464,7 @@ export default function HomeScreen() {
               withOuterLines={false}
               withVerticalLines={false}
               withHorizontalLines={true}
-              withDots={true}
+              withDots={false}
               withShadow={true}
               segments={4}
             />
@@ -490,7 +498,7 @@ export default function HomeScreen() {
                 <Text className="text-lg font-semibold text-gray-900">
                   Available Loans
                 </Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push("/LoanPlans")} hitSlop={8}>
                   <Text className="text-sm text-[#FF8C42] font-medium">
                     See all
                   </Text>

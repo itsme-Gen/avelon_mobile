@@ -10,9 +10,9 @@ import {
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    Alert,
     ActivityIndicator
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
