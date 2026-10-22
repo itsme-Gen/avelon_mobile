@@ -1,30 +1,35 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Redirect, Tabs, router } from "expo-router";
-import type { Href } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { useAuthStore } from "@/stores/auth.store";
 import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, Dimensions, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Dimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useFirstRunTour, useTourTarget } from "@/components/tour";
 
 interface TabIconProps {
+  name: string;
   focused: boolean;
   IconComponent: any;
   iconName: string;
   size?: number;
 }
 
-const notificationsRoute = "/notifications" as Href;
-
 const TabIcon = ({
+  name,
   focused,
   IconComponent,
   iconName,
   size = 28,
 }: TabIconProps) => {
+  // The tour falls back to the tab icon when a screen has nothing to point at
+  const tourRef = useTourTarget(`tab-${name}`);
   return (
     <View
+      ref={tourRef}
+      collapsable={false}
       className={`w-[50px] h-[50px] rounded-full justify-center items-center self-center  ${focused ? "bg-[#FFE7D2]" : ""}`}
     >
       <IconComponent
@@ -41,6 +46,7 @@ export default function TabsLayout() {
   const [checked, setChecked] = useState(isAuthenticated);
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
+  useFirstRunTour();
   useEffect(() => {
     if (isAuthenticated) {
       setChecked(true);
@@ -96,6 +102,7 @@ export default function TabsLayout() {
             fontFamily: "Syne_700Bold",
           },
           headerShadowVisible: false,
+          headerRight: () => <NotificationBell />,
         }}
       >
         <Tabs.Screen
@@ -104,6 +111,7 @@ export default function TabsLayout() {
             title: "Home",
             tabBarIcon: ({ focused }) => (
               <TabIcon
+                name="Home"
                 focused={focused}
                 IconComponent={Ionicons}
                 iconName={focused ? "home" : "home-outline"}
@@ -117,6 +125,7 @@ export default function TabsLayout() {
             title: "Loan Plans",
             tabBarIcon: ({ focused }) => (
               <TabIcon
+                name="LoanPlans"
                 focused={focused}
                 IconComponent={MaterialCommunityIcons}
                 iconName={focused ? "bank" : "bank-outline"}
@@ -126,22 +135,11 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="Wallet"
-            options={{
-              title: "My Wallet",
-              headerRight: () => (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={{
-                    marginRight: 12,
-                    padding: 6,
-                  }}
-                  onPress={() => router.push(notificationsRoute)}
-              >
-                <Ionicons name="notifications-outline" size={22} color="#111827" />
-              </TouchableOpacity>
-            ),
+          options={{
+            title: "My Wallet",
             tabBarIcon: ({ focused }) => (
               <TabIcon
+                name="Wallet"
                 focused={focused}
                 IconComponent={Ionicons}
                 iconName={focused ? "wallet" : "wallet-outline"}
@@ -155,6 +153,7 @@ export default function TabsLayout() {
             title: "Records",
             tabBarIcon: ({ focused }) => (
               <TabIcon
+                name="Records"
                 focused={focused}
                 IconComponent={Ionicons}
                 iconName={focused ? "document-text" : "document-text-outline"}
@@ -166,16 +165,9 @@ export default function TabsLayout() {
           name="Profile"
           options={{
             title: "Profile",
-            headerRight: () => (
-              <TouchableOpacity
-                className="mr-4"
-                onPress={() => router.push(notificationsRoute)}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#000" />
-              </TouchableOpacity>
-            ),
             tabBarIcon: ({ focused }) => (
               <TabIcon
+                name="Profile"
                 focused={focused}
                 IconComponent={Ionicons}
                 iconName={focused ? "person" : "person-outline"}

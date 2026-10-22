@@ -2,14 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { changePassword } from "@/services/auth.service";
+import { useAuthStore } from "@/stores/auth.store";
 import { validatePassword, validatePasswordMatch } from "@/utils/validation.util";
 
 interface ChangePasswordScreenProps {
@@ -46,8 +47,9 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
     setIsSubmitting(true);
     try {
       await changePassword(currentPassword, newPassword);
-      Alert.alert("Success", "Your password has been changed.", [
-        { text: "OK", onPress: onBack },
+      // The backend ends every session on a password change, this one included
+      Alert.alert("Password Changed", "Sign in again with your new password.", [
+        { text: "OK", onPress: () => { void useAuthStore.getState().logout(); } },
       ]);
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to change password.");
@@ -62,6 +64,8 @@ export default function ChangePasswordScreen({ onBack }: ChangePasswordScreenPro
       <View className="flex-row items-center px-5 py-4 bg-white border-b border-gray-100">
         <TouchableOpacity
           onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
         >
           <Ionicons name="arrow-back" size={20} color="#000" />

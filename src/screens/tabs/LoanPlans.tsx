@@ -2,6 +2,7 @@ import { TermsModal } from "@/components/terms/TermsModal";
 import type { LoanPlan } from "@/services/loan.service";
 import * as loanService from "@/services/loan.service";
 import { useVerificationStore } from "@/stores/verification.store";
+import { useTourTarget } from "@/components/tour";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -91,11 +92,11 @@ const InfoModal = ({
 );
 
 const TERMS_ITEMS = [
-  "To use our services, you must be at least 18 years old and have a valid bank account.",
+  "To use our services, you must be at least 18 years old and have a verified identity and a crypto wallet.",
   "To apply for a loan, you must provide accurate and complete information and consent to our verification of the provided information.",
-  "We will review your application and notify you of our decision within 2 business days. If approved, we will provide the loan amount to your bank account.",
-  "You agree to repay the loan amount along with any applicable interest and fees according to the repayment schedule provided. Late payments may result in additional charges.",
-  "We may charge fees for processing your loan application, late payments, and other services, as disclosed before you agree to the loan terms.",
+  "An administrator reviews every application and you are notified of the decision in the app. If approved, you lock a stake from your wallet and the loan amount is sent to that same wallet.",
+  "You agree to repay the loan amount plus interest in one payment by the due date. If you miss the due date, your stake can be seized. A change in the ETH price alone never seizes it.",
+  "An origination fee is taken from the loan amount when it is paid out, as shown before you apply. There are no late fees.",
   "We respect your privacy and will protect your information. We will not share your personal information with third parties without your consent, except as required by law.",
   "We reserve the right to terminate your access to our services if you violate these Terms and Conditions or engage in fraudulent activities.",
   "We uphold fair access to our services regardless of race, gender, disability, or other personal traits, in line with Philippine laws.",
@@ -104,6 +105,7 @@ const TERMS_ITEMS = [
 export default function LoanPlans() {
   const router = useRouter();
   const { isVerified } = useVerificationStore();
+  const firstPlanRef = useTourTarget("plans-first");
 
   const [plans, setPlans] = useState<LoanPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -172,33 +174,30 @@ export default function LoanPlans() {
     return `${days} days`;
   };
 
+  // Repayment is one payment of principal plus interest on the due date, which
+  // counts from the payout. Shown as an estimate from today.
   const buildSchedulePreview = (
     plan: LoanPlan,
     amount: number,
     durationDays: number,
   ) => {
-    const monthsCount = Math.max(1, Math.round(durationDays / 30));
-    const intervalDays = Math.max(1, Math.round(durationDays / monthsCount));
-    const proratedInterest = amount * (plan.interestRate / 100) * (durationDays / 365);
-    const totalWithInterest = amount + proratedInterest;
-    const installment = totalWithInterest / monthsCount;
+    const interest = amount * (plan.interestRate / 100) * (durationDays / 365);
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + durationDays);
 
-    return Array.from({ length: monthsCount }).map((_, index) => {
-      const days = intervalDays * (index + 1);
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + days);
-
-      return {
-        label: `Period ${index + 1}/${monthsCount}`,
-        amount: `${installment.toFixed(6)} ETH`,
-        due: `Repayment due date: ${dueDate.toLocaleDateString("en-US", {
+    return [
+      {
+        label: "Single payment",
+        amount: `${(amount + interest).toFixed(6)} ETH`,
+        due: `Due about ${dueDate.toLocaleDateString("en-US", {
           month: "short",
           day: "2-digit",
           year: "numeric",
         })}`,
         dueMonth: dueDate.toLocaleDateString("en-US", { month: "long" }),
-      };
-    });
+        interest: `${interest.toFixed(6)} ETH interest`,
+      },
+    ];
   };
 
   const fetchPlans = useCallback(async (silent = false) => {
@@ -228,12 +227,13 @@ export default function LoanPlans() {
       amount: string;
       due: string;
       dueMonth: string;
+      interest: string;
     },
   ) => {
     setInfoModal({
       visible: true,
-      title: `${entry.label} repayment`,
-      message: `${plan.name}\n${entry.amount}\nMonth: ${entry.dueMonth}\n${entry.due}`,
+      title: "Repayment",
+      message: `${plan.name}\n${entry.amount} in one payment (${entry.interest})\n${entry.due}\nThe due date counts from the day the loan is paid out.`,
       icon: "calendar-outline",
       iconColor: "#111827",
     });
@@ -301,8 +301,8 @@ export default function LoanPlans() {
     if (!chosenDuration) {
       setInfoModal({
         visible: true,
-        title: "Select a frequency",
-        message: "Please choose a repayment frequency before applying.",
+        title: "Select a term",
+        message: "Choose how many days you need the loan for before applying.",
       });
       return;
     }
@@ -451,7 +451,7 @@ export default function LoanPlans() {
               </View>
             ) : plans.length > 0 ? (
               <View>
-                {plans.map((plan) => {
+                {plans.map((plan, planIndex) => {
                   const selectedDuration = selectedDurationByPlan[plan.id];
                   const selectedAmount =
                     selectedAmountByPlan[plan.id] ?? plan.minAmount;
@@ -478,6 +478,7 @@ export default function LoanPlans() {
                       key={plan.id}
                       className="bg-white border border-gray-100 rounded-3xl p-5 mb-6 shadow-sm"
                     >
+                      <View ref={planIndex === 0 ? firstPlanRef : undefined} collapsable={false}>
                       <View className="flex-row items-center justify-between mb-4">
                         <View>
                           <Text className="text-xs uppercase tracking-wide text-gray-500">
@@ -525,7 +526,7 @@ export default function LoanPlans() {
                               inputMode="decimal"
                               selectTextOnFocus
                               accessibilityLabel="Borrow amount in ETH"
-                              className="text-2xl font-bold text-gray-900 text-center min-w-[90px] p-0"
+                              className="text-2xl font-bold text-gray-900 text-center min-w-[90px] max-w-[130px] p-0"
                             />
                             <Text className="text-base font-semibold text-gray-500 ml-1">
                               ETH
@@ -553,9 +554,11 @@ export default function LoanPlans() {
                         </TouchableOpacity>
                       </View>
 
+                      </View>
+
                       <View className="mb-4">
                         <Text className="text-sm font-semibold text-gray-900 mb-2">
-                          Frequency
+                          Term
                         </Text>
                         <View className="flex-row flex-wrap gap-2">
                           {(plan.durationOptions ?? []).map((duration) => {
@@ -657,7 +660,7 @@ export default function LoanPlans() {
                                 </Text>
                               </View>
                               <Text className="text-[11px] text-gray-500 mt-1">
-                                Month: {item.dueMonth}
+                                Principal plus {item.interest}
                               </Text>
                               <Text className="text-lg font-bold text-gray-900 mt-1">
                                 {item.amount}
@@ -672,7 +675,7 @@ export default function LoanPlans() {
                           Min: {formatEth(plan.minAmount)}
                         </Text>
                         <Text className="text-xs text-gray-500">
-                          Selected duration: {monthsLabel}
+                          Term: {monthsLabel}
                         </Text>
                       </View>
                     </View>

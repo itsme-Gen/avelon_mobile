@@ -64,8 +64,8 @@ function TermsAndConditionsModal({
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">
-            1. To use our services, you must be at least 18 years old and has a
-            valid bank account.
+            1. To use our services, you must be at least 18 years old and have a
+            verified identity and a crypto wallet.
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">
@@ -75,21 +75,20 @@ function TermsAndConditionsModal({
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">
-            3. We will review your application and notify you of our decision
-            within 2 business days. If approved, we will provide the loan amount
-            to your bank account.
+            3. An administrator reviews every application and you are notified of
+            the decision in the app. If approved, you lock a stake from your
+            wallet and the loan amount is sent to that same wallet.
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">
-            4. You agree to repay the loan amount along with any applicable
-            interest and fees according to the repayment schedule provided. Late
-            payments may result in additional charges.
+            4. You agree to repay the loan amount plus interest by the due date.
+            If you miss the due date, your stake can be seized. A change in the
+            ETH price alone never seizes it.
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">
-            5. We may charge fees for processing your loan application, late
-            payments, and other services as disclosed before you agree to the
-            loan terms.
+            5. An origination fee is taken from the loan amount when it is paid
+            out, as shown before you apply. There are no late fees.
           </Text>
 
           <Text className="text-sm text-gray-700 leading-5 mb-3">

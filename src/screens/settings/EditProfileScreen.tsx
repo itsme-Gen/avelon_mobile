@@ -121,6 +121,8 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                 <View className="flex-row items-center">
                     <TouchableOpacity
                         onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
                         className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
                     >
                         <Ionicons name="arrow-back" size={20} color="#000" />
@@ -197,19 +199,19 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                         </View>
 
                         {/* KYC-Verified Info (read-only) */}
-                        {(profile?.legalName || profile?.address || profile?.employmentType) && (
+                        {!!(profile?.legalName || profile?.address || profile?.employmentType) && (
                             <View className="mx-4 mt-4 bg-white rounded-2xl p-5">
                                 <Text className="text-xs font-semibold text-gray-400 uppercase mb-4">
                                     Verified Information
                                 </Text>
 
-                                {profile.legalName && (
+                                {!!profile.legalName && (
                                     <ReadOnlyField label="Legal Name" value={profile.legalName} />
                                 )}
-                                {profile.address && (
+                                {!!profile.address && (
                                     <ReadOnlyField label="Address" value={profile.address} />
                                 )}
-                                {profile.employmentType && (
+                                {!!profile.employmentType && (
                                     <ReadOnlyField
                                         label="Employment"
                                         value={profile.employmentType.replace(/_/g, " ")}
@@ -314,9 +316,9 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                                     </View>
                                 </View>
 
-                                {(profile?.totalBorrowed || profile?.totalRepaid) && (
+                                {(Number(profile?.totalBorrowed) > 0 || Number(profile?.totalRepaid) > 0) && (
                                     <View className="border-t border-gray-100 mt-4 pt-3">
-                                        {profile.totalBorrowed && (
+                                        {Number(profile.totalBorrowed) > 0 && (
                                             <View className="flex-row justify-between mb-2">
                                                 <Text className="text-sm text-gray-500">Total Borrowed</Text>
                                                 <Text className="text-sm font-medium text-gray-700">
@@ -324,7 +326,7 @@ export default function EditProfileScreen({ onBack }: EditProfileScreenProps) {
                                                 </Text>
                                             </View>
                                         )}
-                                        {profile.totalRepaid && (
+                                        {Number(profile.totalRepaid) > 0 && (
                                             <View className="flex-row justify-between">
                                                 <Text className="text-sm text-gray-500">Total Repaid</Text>
                                                 <Text className="text-sm font-medium text-gray-700">

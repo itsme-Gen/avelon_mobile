@@ -11,22 +11,39 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as notificationsApi from "@/services/notifications-api.service";
 import type { Notification } from "@/services/notifications-api.service";
+import { useNotificationsStore } from "@/stores/notifications.store";
+import { router } from "expo-router";
 
 interface NotificationsScreenProps {
     onBack: () => void;
 }
 
 const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
+    KYC_SUBMITTED: "shield-half-outline",
+    KYC_APPROVED: "shield-checkmark-outline",
+    KYC_REJECTED: "shield-outline",
     LOAN_APPLICATION_RECEIVED: "document-text-outline",
     LOAN_APPROVED: "checkmark-circle-outline",
     LOAN_REJECTED: "close-circle-outline",
+    LOAN_CANCELLED: "remove-circle-outline",
+    COLLATERAL_DEPOSITED: "lock-closed-outline",
+    COLLATERAL_ADDED: "lock-closed-outline",
     LOAN_DISBURSED: "cash-outline",
-    PAYMENT_RECEIVED: "wallet-outline",
-    PAYMENT_DUE: "alarm-outline",
-    PAYMENT_OVERDUE: "warning-outline",
-    KYC_APPROVED: "shield-checkmark-outline",
-    KYC_REJECTED: "shield-outline",
+    REPAYMENT_REMINDER: "alarm-outline",
+    REPAYMENT_RECEIVED: "wallet-outline",
+    REPAYMENT_OVERDUE: "warning-outline",
+    COLLATERAL_WARNING: "trending-down-outline",
+    LIQUIDATION_WARNING: "alert-circle-outline",
+    LOAN_LIQUIDATED: "alert-circle-outline",
+    LOAN_REPAID: "checkmark-done-outline",
+    LOAN_EXTENDED: "calendar-outline",
+    POOL_DEPOSIT: "arrow-down-circle-outline",
+    POOL_WITHDRAWAL: "arrow-up-circle-outline",
+    POOL_YIELD_CLAIMED: "trending-up-outline",
 };
+
+// Alerts that need the borrower to act get the warning colour
+const URGENT = new Set(["REPAYMENT_OVERDUE", "COLLATERAL_WARNING", "LIQUIDATION_WARNING", "LOAN_LIQUIDATED", "KYC_REJECTED", "LOAN_REJECTED"]);
 
 function getIcon(type: string): keyof typeof Ionicons.glyphMap {
     return ICON_MAP[type] || "notifications-outline";
@@ -52,6 +69,13 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+    const setBadge = useNotificationsStore((s) => s.setUnreadCount);
+
+    // Keep the header badge in step with what this list shows
+    useEffect(() => {
+        if (!isLoading) setBadge(unreadCount);
+    }, [unreadCount, isLoading, setBadge]);
 
     const fetchNotifications = useCallback(async (silent = false) => {
         if (!silent) setIsLoading(true);
@@ -60,6 +84,9 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
             if (result.success && result.data) {
                 setNotifications(result.data);
                 setUnreadCount(result.meta?.unreadCount ?? 0);
+                setError(null);
+            } else {
+                setError(result.error ?? "Could not load notifications.");
             }
         } catch (error) {
             console.error("[Notifications] Fetch error:", error);
@@ -88,6 +115,9 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
             );
             setUnreadCount((c) => Math.max(0, c - 1));
         }
+        // Loan notifications open the loan list, which shows the next step for any status
+        const loanId = notification.metadata?.loanId;
+        if (typeof loanId === "string") router.push("/(tabs)/Records");
     };
 
     const handleMarkAllRead = async () => {
@@ -115,7 +145,7 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
                 <Ionicons
                     name={getIcon(item.type)}
                     size={20}
-                    color={item.isRead ? "#6B7280" : "#F97316"}
+                    color={item.isRead ? "#6B7280" : URGENT.has(item.type) ? "#DC2626" : "#F97316"}
                 />
             </View>
             <View className="flex-1">
@@ -134,7 +164,7 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
                         {formatTime(item.createdAt)}
                     </Text>
                 </View>
-                <Text className="text-xs text-gray-500 leading-4" numberOfLines={2}>
+                <Text className="text-xs text-gray-500 leading-4" numberOfLines={3}>
                     {item.message}
                 </Text>
             </View>
@@ -150,6 +180,8 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
             <View className="flex-row items-center justify-between px-5 py-4 bg-white border-b border-gray-100">
                 <TouchableOpacity
                     onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
                     className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
                 >
                     <Ionicons name="arrow-back" size={20} color="#000" />
@@ -169,6 +201,14 @@ export default function NotificationsScreen({ onBack }: NotificationsScreenProps
             {isLoading ? (
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color="#1F2937" />
+                </View>
+            ) : error && notifications.length === 0 ? (
+                <View className="flex-1 items-center justify-center px-8">
+                    <Ionicons name="cloud-offline-outline" size={48} color="#D1D5DB" />
+                    <Text className="text-sm text-gray-500 text-center mt-3">{error}</Text>
+                    <TouchableOpacity onPress={() => fetchNotifications()} className="mt-4 bg-black rounded-full px-5 py-2.5">
+                        <Text className="text-sm font-semibold text-white">Try again</Text>
+                    </TouchableOpacity>
                 </View>
             ) : notifications.length === 0 ? (
                 <View className="flex-1 items-center justify-center px-8">

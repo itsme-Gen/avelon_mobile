@@ -6,7 +6,8 @@ interface SupportScreenProps {
   onBack: () => void;
 }
 
-const SUPPORT_EMAIL = "support@avelon.app";
+// Set EXPO_PUBLIC_SUPPORT_EMAIL to the team inbox before a release
+const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL || "support@avelon.app";
 
 export default function SupportScreen({ onBack }: SupportScreenProps) {
   return (
@@ -14,6 +15,8 @@ export default function SupportScreen({ onBack }: SupportScreenProps) {
       <View className="flex-row items-center px-5 py-4 bg-white border-b border-gray-100">
         <TouchableOpacity
           onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
           className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
         >
           <Ionicons name="arrow-back" size={20} color="#000" />

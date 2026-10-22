@@ -4,7 +4,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Text,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function OTPScreen() {

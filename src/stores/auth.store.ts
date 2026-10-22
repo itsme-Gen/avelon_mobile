@@ -111,6 +111,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } finally {
             await endWalletSession();
             await clearAuthData();
+            // Otherwise the next account starts with this one's KYC status
+            useVerificationStore.getState().resetVerification();
             set({
                 user: null,
                 isAuthenticated: false,
@@ -140,6 +142,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const signIn = async (user: User) => {
             try { await saveUser(user); } catch { /* cached copy only */ }
             set({ user, isAuthenticated: true, isLoading: false });
+            // Push tokens can rotate between launches, so refresh it on every restore
+            registerDeviceToken().catch(() => {});
         };
         // No answer from the server is not a rejection. Keep the saved user and
         // let the next request refresh the session.

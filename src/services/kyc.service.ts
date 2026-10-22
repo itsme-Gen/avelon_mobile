@@ -7,6 +7,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { API_BASE_URL } from '@/config';
 import { authenticatedFetch } from './authenticated-fetch';
 import { getAccessToken } from '@/utils/storage';
+import { Platform } from 'react-native';
 
 // The backend validates the extension and the MIME type separately, so a PNG
 // labelled image/jpeg is rejected. Derive the type from the name.
@@ -16,6 +17,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     '.png': 'image/png',
     '.webp': 'image/webp',
 };
+const MIME_BY_TYPE: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 
 /**
  * Turn an image URI into something Expo's FormData encoder accepts.
@@ -26,6 +28,15 @@ const MIME_BY_EXTENSION: Record<string, string> = {
  * the bytes along with the name and type the backend checks.
  */
 async function toFilePart(uri: string, fallbackName: string) {
+    // On web the picker and camera hand back blob: or data: URLs that
+    // expo-file-system cannot open; the browser's own Blob works as-is.
+    if (Platform.OS === 'web') {
+        const blob = await (await fetch(uri)).blob();
+        const type = MIME_BY_EXTENSION[extensionOf(fallbackName)] && blob.type in MIME_BY_TYPE ? blob.type : 'image/jpeg';
+        const name = fallbackName.replace(/\.[a-z]+$/i, MIME_BY_TYPE[type] ?? '.jpg');
+        return new globalThis.File([blob], name, { type });
+    }
+
     let source = uri;
     let name = new File(uri).name || fallbackName;
     let extension = extensionOf(name);

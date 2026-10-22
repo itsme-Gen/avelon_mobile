@@ -51,6 +51,8 @@ export interface Loan {
     // Set only when an admin rejects the application
     rejectionReason?: string | null;
     dueDate: string | null;
+    // Active, past the due date and still owing; the stake can be seized
+    isOverdue?: boolean;
     repaidAt: string | null;
     createdAt: string;
     plan: { name: string };

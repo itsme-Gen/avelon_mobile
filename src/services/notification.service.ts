@@ -26,7 +26,7 @@ let cachedModule: Notifications | null | undefined;
 export function getNotifications(): Notifications | null {
     if (cachedModule !== undefined) return cachedModule;
     if (IN_EXPO_GO) {
-        console.warn('[Notifications] Running in Expo Go — push notifications are disabled.');
+        console.log('[Notifications] Running in Expo Go — push notifications are disabled.');
         cachedModule = null;
         return null;
     }
@@ -44,7 +44,6 @@ export function getNotifications(): Notifications | null {
 // ─── Foreground notification behaviour ───────────────────────────────────────
 getNotifications()?.setNotificationHandler({
     handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
         shouldShowBanner: true,
@@ -72,7 +71,8 @@ export async function getFCMToken(): Promise<string | null> {
     if (!Notifications) return null;
 
     if (!Device.isDevice) {
-        console.warn('[Notifications] Push notifications only work on a physical device.');
+        // Expected on simulators and the web preview, not a fault
+        console.log('[Notifications] Push notifications only work on a physical device.');
         return null;
     }
 
@@ -85,7 +85,8 @@ export async function getFCMToken(): Promise<string | null> {
     }
 
     if (finalStatus !== 'granted') {
-        console.warn('[Notifications] Permission not granted.');
+        // The user said no; Notification Settings explains how to turn it back on
+        console.log('[Notifications] Permission not granted.');
         return null;
     }
 

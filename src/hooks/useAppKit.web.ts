@@ -1,4 +1,5 @@
-import { Alert } from "react-native";
+// react-native-web's Alert is a no-op, which made Connect look dead
+import { Alert } from "@/utils/alert";
 
 export function useAppKit() {
   return {

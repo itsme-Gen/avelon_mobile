@@ -9,11 +9,11 @@ import * as loanService from "@/services/loan.service";
 import { useVerificationStore } from "@/stores/verification.store";
 import { amountOwed, formatEth } from "@/utils/loan-amounts";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useTourTarget } from "@/components/tour";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -21,6 +21,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { Alert } from "@/utils/alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_COLLATERAL: "bg-yellow-400",
   COLLATERAL_DEPOSITED: "bg-blue-400",
   ACTIVE: "bg-green-500",
+  OVERDUE: "bg-red-500",
   REPAID: "bg-gray-400",
   LIQUIDATED: "bg-red-500",
   CANCELLED: "bg-gray-300",
@@ -41,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING_COLLATERAL: "Pending Collateral",
   COLLATERAL_DEPOSITED: "Collateral Deposited",
   ACTIVE: "Active",
+  OVERDUE: "Overdue",
   REPAID: "Repaid",
   LIQUIDATED: "Liquidated",
   CANCELLED: "Cancelled",
@@ -53,11 +56,15 @@ const STATUS_BADGE_STYLES: Record<string, { bg: string; text: string }> = {
   PENDING_COLLATERAL: { bg: "bg-yellow-100", text: "text-yellow-700" },
   COLLATERAL_DEPOSITED: { bg: "bg-blue-100", text: "text-blue-700" },
   ACTIVE: { bg: "bg-green-100", text: "text-green-700" },
+  OVERDUE: { bg: "bg-red-100", text: "text-red-700" },
   REPAID: { bg: "bg-gray-100", text: "text-gray-600" },
   LIQUIDATED: { bg: "bg-red-100", text: "text-red-700" },
   CANCELLED: { bg: "bg-gray-100", text: "text-gray-500" },
   EXPIRED: { bg: "bg-orange-100", text: "text-orange-700" },
 };
+
+// Overdue is not a loan status, just an active loan past its due date
+const displayStatus = (loan: Loan) => (loan.isOverdue ? "OVERDUE" : loan.status);
 
 const TX_TYPE_CONFIG: Record<
   string,
@@ -134,7 +141,7 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
     })();
   }, [loan.id]);
 
-  const badgeStyle = STATUS_BADGE_STYLES[loan.status] ?? {
+  const badgeStyle = STATUS_BADGE_STYLES[displayStatus(loan)] ?? {
     bg: "bg-gray-100",
     text: "text-gray-600",
   };
@@ -172,7 +179,7 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
             </Text>
             <View className={`px-3 py-1 rounded-full ${badgeStyle.bg}`}>
               <Text className={`text-xs font-medium ${badgeStyle.text}`}>
-                {STATUS_LABELS[loan.status] ?? loan.status}
+                {STATUS_LABELS[displayStatus(loan)] ?? loan.status}
               </Text>
             </View>
           </View>
@@ -300,6 +307,34 @@ function LoanDetailView({ loan, onBack }: { loan: Loan; onBack: () => void }) {
           </View>
         )}
 
+        {loan.status === "ACTIVE" && !paidOff && loan.dueDate && (
+          <View className="mx-4 mt-4 bg-white rounded-2xl p-4">
+            <Text className="text-xs font-semibold text-gray-400 uppercase mb-2">Repayment schedule</Text>
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-sm font-semibold text-gray-900">Single payment</Text>
+                <Text className={`text-xs mt-0.5 ${loan.isOverdue ? "text-red-600 font-semibold" : "text-gray-500"}`}>
+                  {loan.isOverdue ? "Was due" : "Due"} {new Date(loan.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </Text>
+              </View>
+              <Text className="text-base font-bold text-gray-900">{formatEth(owed)}</Text>
+            </View>
+            <Text className="text-[11px] text-gray-500 mt-2">
+              You can pay part of it early. Your {loan.collateralDeposited} ETH stake comes back when the balance reaches zero.
+            </Text>
+          </View>
+        )}
+        {loan.isOverdue && !paidOff && (
+          <View className="mx-4 mt-4 bg-red-50 border border-red-200 rounded-2xl p-4 flex-row">
+            <Ionicons name="warning-outline" size={18} color="#DC2626" />
+            <View className="flex-1 ml-2">
+              <Text className="text-sm font-semibold text-red-700">Payment overdue</Text>
+              <Text className="text-xs text-red-700 mt-1 leading-4">
+                Repay the full balance now. Past the due date, your {loan.collateralDeposited} ETH stake can be seized at any time.
+              </Text>
+            </View>
+          </View>
+        )}
         {loan.status === "ACTIVE" && !paidOff && (
           <View className="mx-4 mt-4">
             <TouchableOpacity
@@ -442,6 +477,7 @@ export default function DocumentsScreen() {
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const isVerified = useVerificationStore((state) => state.isVerified);
   const router = useRouter();
+  const tabsRef = useTourTarget("records-tabs");
 
   const [loans, setLoans] = useState<Loan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -465,6 +501,13 @@ export default function DocumentsScreen() {
   useEffect(() => {
     if (isVerified) fetchLoans();
   }, [isVerified, fetchLoans]);
+
+  // Coming back from a deposit or repayment should show the new status
+  useFocusEffect(
+    useCallback(() => {
+      if (isVerified) fetchLoans(true);
+    }, [isVerified, fetchLoans]),
+  );
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -591,14 +634,14 @@ export default function DocumentsScreen() {
       activeOpacity={0.7}
     >
       <View
-        className={`w-1 h-16 ${STATUS_COLORS[loan.status] ?? "bg-gray-400"} rounded-full mr-4`}
+        className={`w-1 h-16 ${STATUS_COLORS[displayStatus(loan)] ?? "bg-gray-400"} rounded-full mr-4`}
       />
       <View className="flex-1">
         <Text className="text-base font-semibold text-gray-900 mb-1">
           {loan.plan?.name ?? "Loan"}
         </Text>
         <Text className="text-xs text-gray-500 mb-1">
-          {STATUS_LABELS[loan.status] ?? loan.status} ·{" "}
+          {STATUS_LABELS[displayStatus(loan)] ?? loan.status} ·{" "}
           {new Date(loan.createdAt).toLocaleDateString()}
         </Text>
         <Text className="text-lg font-bold text-gray-900">
@@ -657,7 +700,7 @@ export default function DocumentsScreen() {
 
       {/* Tab Navigation (always visible) */}
       <View className="px-5 pt-3 mb-4">
-        <View className="flex-row bg-gray-100 rounded-xl p-1">
+        <View ref={tabsRef} collapsable={false} className="flex-row bg-gray-100 rounded-xl p-1">
           <TouchableOpacity
             onPress={() => handleTabPress(0)}
             className={`flex-1 py-3 rounded-lg ${activeTab === 0 ? "bg-white" : "bg-transparent"}`}
